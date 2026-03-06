@@ -3,8 +3,17 @@ local act = wezterm.action
 
 local config = {}
 
-config.default_domain = 'WSL:Ubuntu-24.04'
-config.default_prog = { 'wsl.exe', '-d', 'Ubuntu-24.04', '--cd', '~' }
+local ok, local_config = pcall(dofile, os.getenv("HOME") .. "/.config/wezterm/local.lua")
+if ok and type(local_config) == "table" then
+  for k, v in pairs(local_config) do
+    config[k] = v
+  end
+end
+
+if wezterm.target_triple:find('windows') then
+  config.default_domain = 'WSL:Ubuntu-24.04'
+  config.default_prog = { 'wsl.exe', '-d', 'Ubuntu-24.04', '--cd', '~' }
+end
 
 -- Font settings
 config.font = wezterm.font({
