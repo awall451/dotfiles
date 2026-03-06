@@ -17,11 +17,6 @@ config.cell_width = 1.1
 
 -- Colors
 config.color_scheme = "tokyonight_storm"
---config.color_scheme = "Atelier Sulphurpool (base16)"
---config.colors = {
---  cursor_bg = "white",
---  cursor_border = "white",
---}
 
 -- Appearance
 config.window_decorations = "RESIZE"
