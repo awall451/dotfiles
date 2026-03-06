@@ -10,15 +10,6 @@ if is_windows then
   config.default_prog = { 'wsl.exe', '-d', 'Ubuntu-24.04', '--cd', '~' }
 end
 
-local local_config_path = wezterm.home_dir .. '/.config/wezterm/local.lua'
-local ok, local_config = pcall(dofile, local_config_path)
-
-if ok and type(local_config) == 'table' then
-  for k, v in pairs(local_config) do
-    config[k] = v
-  end
-end
-
 -- Font settings
 config.font = wezterm.font({
   family = "IosevkaTerm Nerd Font",
@@ -69,5 +60,14 @@ table.insert(config.keys, {
   mods = 'CTRL|SHIFT',
   action = wezterm.action.DisableDefaultAssignment,
 })
+
+local local_config_path = wezterm.home_dir .. '/.config/wezterm/local.lua'
+local ok, local_config = pcall(dofile, local_config_path)
+
+if ok and type(local_config) == 'table' then
+  for k, v in pairs(local_config) do
+    config[k] = v
+  end
+end
 
 return config
