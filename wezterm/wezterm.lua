@@ -15,7 +15,7 @@ config.font = wezterm.font({
   family = "IosevkaTerm Nerd Font",
   weight = "Medium",
 })
-config.font_size = 17
+config.font_size = 15
 config.line_height = 1.05
 config.cell_width = 1.1
 
