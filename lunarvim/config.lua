@@ -51,6 +51,13 @@ lvim.plugins = {
     end,
   },
 
+  {
+    "esmuellert/codediff.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+    },
+  },
+
   -- PICO-8 syntax for .p8 files
   {
     "bakudankun/PICO-8.vim",
@@ -83,6 +90,12 @@ lvim.plugins = {
     ft = { "markdown" },
     build = "cd app && npm install",
     cmd = { "MarkdownPreview", "MarkdownPreviewStop", "MarkdownPreviewToggle" },
+  },
+  {
+    "b0o/schemastore.nvim",
+  },
+  {
+    "mfussenegger/nvim-lint",
   },
 }
 
@@ -161,3 +174,61 @@ end
 -- Nvim-tree
 lvim.builtin.nvimtree.setup.view.side = "right"
 lvim.builtin.nvimtree.setup.view.width = 50
+
+-- Windows clipboard fix maybe
+vim.opt.clipboard:append("unnamedplus")
+vim.g.clipboard = {
+  name = "win32yank-wsl",
+  copy = {
+    ["+"] = "win32yank.exe -i --crlf",
+    ["*"] = "win32yank.exe -i --crlf",
+  },
+  paste = {
+    ["+"] = "win32yank.exe -o --lf",
+    ["*"] = "win32yank.exe -o --lf",
+  },
+  cache_enabled = 0,
+}
+
+-- Detach yamlls from helm buffers after it attaches
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local bufnr = args.buf
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+
+    if not client then
+      return
+    end
+
+    if vim.bo[bufnr].filetype == "helm" and client.name == "yamlls" then
+      vim.schedule(function()
+        vim.lsp.buf_detach_client(bufnr, client.id)
+        vim.diagnostic.reset(nil, bufnr)
+      end)
+    end
+  end,
+})
+
+local lspconfig = require("lspconfig")
+
+lspconfig.helm_ls.setup({
+  settings = {
+    ["helm-ls"] = {
+      yamlls = {
+        enabled = false,
+      },
+    },
+  },
+})
+
+-- Spell check
+vim.opt.spell = true
+vim.opt.spelllang = { "en_us" }
+
+-- Force strong underline style
+vim.cmd [[
+highlight SpellBad gui=undercurl guisp=#ff0000
+highlight SpellCap gui=undercurl guisp=#ffaa00
+highlight SpellRare gui=undercurl guisp=#00ffff
+highlight SpellLocal gui=undercurl guisp=#00ff00
+]]
