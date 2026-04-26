@@ -11,13 +11,19 @@ if is_windows then
 end
 
 -- Font settings
-config.font = wezterm.font({
-  family = "IosevkaTerm Nerd Font",
-  weight = "Medium",
+config.font = wezterm.font_with_fallback({
+  { family = "IosevkaTerm Nerd Font", weight = "Medium" },
+  { family = "Symbols Nerd Font Mono" },
+  { family = "FiraCode Nerd Font" },
 })
 config.font_size = 15
 config.line_height = 1.05
 config.cell_width = 1.1
+
+-- Suppress missing-glyph popups. Some Neovim plugins still emit legacy
+-- Nerd Fonts v2 codepoints (e.g. U+F8D6) that were removed in v3; placeholder
+-- squares render in their place but the warning itself is just noise.
+config.warn_about_missing_glyphs = false
 
 -- Colors
 config.color_scheme = "tokyonight_storm"
