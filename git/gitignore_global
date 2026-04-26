@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# Editor swap / backup
+*.swp
+*.swo
+*.swn
+.netrwhist
+Session.vim
+.session
+
+# IDE-specific (project-local choice)
+.idea/
+.vscode/
+*.iml
+*.suo
+*.user
+
+# Claude Code per-project state
+**/.claude/settings.local.json
+
+# Build artifacts (very generic)
+*.log
+*.pid
+.env.local

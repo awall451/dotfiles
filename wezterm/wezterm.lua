@@ -38,7 +38,35 @@ config.window_padding = {
   bottom = 2,
 }
 
--- Keybindings
+-- Pane navigation/resize cooperates with smart-splits.nvim. When the focused
+-- pane is running (n)vim, the key is forwarded to nvim and smart-splits decides
+-- whether to move within nvim or fall back out to wezterm. When the pane is
+-- not running nvim, wezterm acts on the pane directly.
+local direction_for = {
+  h = 'Left',
+  j = 'Down',
+  k = 'Up',
+  l = 'Right',
+}
+
+local function is_vim(pane)
+  local procname = pane:get_foreground_process_name() or ''
+  return procname:match('n?vim$') ~= nil
+end
+
+local function smart_split_action(mode, key)
+  local mods = mode == 'resize' and 'ALT' or 'CTRL'
+  return wezterm.action_callback(function(win, pane)
+    if is_vim(pane) then
+      win:perform_action(act.SendKey { key = key, mods = mods }, pane)
+    elseif mode == 'resize' then
+      win:perform_action(act.AdjustPaneSize { direction_for[key], 3 }, pane)
+    else
+      win:perform_action(act.ActivatePaneDirection(direction_for[key]), pane)
+    end
+  end)
+end
+
 config.keys = {
   -- Horizontal split
   { key = 'e', mods = 'CTRL|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
@@ -46,17 +74,17 @@ config.keys = {
   -- Vertical split
   { key = 'o', mods = 'CTRL|SHIFT', action = act.SplitVertical { domain = 'CurrentPaneDomain' } },
 
-  -- Pane navigation (vim style)
-  { key = 'h', mods = 'CTRL', action = act.ActivatePaneDirection 'Left' },
-  { key = 'j', mods = 'CTRL', action = act.ActivatePaneDirection 'Down' },
-  { key = 'k', mods = 'CTRL', action = act.ActivatePaneDirection 'Up' },
-  { key = 'l', mods = 'CTRL', action = act.ActivatePaneDirection 'Right' },
+  -- Pane navigation (Ctrl+hjkl) — smart-splits-aware
+  { key = 'h', mods = 'CTRL', action = smart_split_action('move', 'h') },
+  { key = 'j', mods = 'CTRL', action = smart_split_action('move', 'j') },
+  { key = 'k', mods = 'CTRL', action = smart_split_action('move', 'k') },
+  { key = 'l', mods = 'CTRL', action = smart_split_action('move', 'l') },
 
-  -- Pane resizing
-  { key = 'h', mods = 'CTRL|ALT', action = act.AdjustPaneSize { 'Left', 5 } },
-  { key = 'j', mods = 'CTRL|ALT', action = act.AdjustPaneSize { 'Down', 5 } },
-  { key = 'k', mods = 'CTRL|ALT', action = act.AdjustPaneSize { 'Up', 5 } },
-  { key = 'l', mods = 'CTRL|ALT', action = act.AdjustPaneSize { 'Right', 5 } },
+  -- Pane resizing (Alt+hjkl) — smart-splits-aware
+  { key = 'h', mods = 'ALT', action = smart_split_action('resize', 'h') },
+  { key = 'j', mods = 'ALT', action = smart_split_action('resize', 'j') },
+  { key = 'k', mods = 'ALT', action = smart_split_action('resize', 'k') },
+  { key = 'l', mods = 'ALT', action = smart_split_action('resize', 'l') },
 }
 
 config.disable_default_key_bindings = false

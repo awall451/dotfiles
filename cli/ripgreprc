@@ -1,0 +1,19 @@
+# ripgrep config — point RIPGREP_CONFIG_PATH or symlink to ~/.config/ripgrep/ripgreprc
+
+--smart-case
+--hidden
+--follow
+
+# Always-ignore paths
+--glob=!.git/*
+--glob=!node_modules/*
+--glob=!.venv/*
+--glob=!__pycache__/*
+--glob=!*.lock
+--glob=!dist/*
+--glob=!build/*
+--glob=!target/*
+
+# Pretty output when not piped
+--max-columns=200
+--max-columns-preview
