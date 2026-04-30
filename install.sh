@@ -60,11 +60,49 @@ link() {
   echo "link:  $dst -> $src"
 }
 
+# Append a `source <absolute-path>` block into an existing rc file if not
+# already present. Unlike link(), this does NOT replace the user's file —
+# their existing content is preserved and the block runs at the end.
+# Idempotent via the BEGIN/END markers.
+source_into() {
+  local src="$REPO_DIR/$1"
+  local dst="$HOME/$2"
+  local marker="$3"
+  local begin="# >>> dotfiles: $marker >>>"
+  local end="# <<< dotfiles: $marker <<<"
+
+  if [[ ! -e "$src" ]]; then
+    echo "skip:  $1 (source missing)"
+    return
+  fi
+
+  # Create dst if missing so subsequent shells still work.
+  if [[ ! -e "$dst" ]]; then
+    run touch "$dst"
+  fi
+
+  if grep -qF "$begin" "$dst" 2>/dev/null; then
+    echo "ok:    $dst already sources $src"
+    return
+  fi
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  + append source block for $src into $dst"
+  else
+    {
+      printf '\n%s\n' "$begin"
+      printf '[ -f %q ] && source %q\n' "$src" "$src"
+      printf '%s\n' "$end"
+    } >> "$dst"
+  fi
+  echo "source: $dst now sources $src"
+}
+
 # --- mappings: <repo path>  <home-relative path>
 link lunarvim/config.lua          .config/lvim/config.lua
 link wezterm/wezterm.lua          .config/wezterm/wezterm.lua
 
-link shell/bashrc                 .bashrc
+source_into shell/bashrc          .bashrc                bashrc
 link shell/starship.toml          .config/starship.toml
 
 link git/gitconfig                .gitconfig
@@ -80,7 +118,11 @@ link gh/config.yml                .config/gh/config.yml
 echo
 echo "Done."
 if [[ $DRY_RUN -eq 0 ]]; then
-  echo "If existing files were backed up, the new repo versions live in"
-  echo "this dotfiles repo. Move any work/machine-specific bits from the"
-  echo "*.backup-$TIMESTAMP files into ~/.bashrc.local or ~/.gitconfig.local."
+  echo "Notes:"
+  echo "  - bashrc is sourced (not replaced). Your existing ~/.bashrc is untouched;"
+  echo "    a 'source $REPO_DIR/shell/bashrc' block was appended."
+  echo "  - Other configs are symlinked. If existing files were backed up, the"
+  echo "    new repo versions live in this dotfiles repo. Move any work/"
+  echo "    machine-specific bits from the *.backup-$TIMESTAMP files into"
+  echo "    ~/.bashrc.local or ~/.gitconfig.local."
 fi

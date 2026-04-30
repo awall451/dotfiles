@@ -1,9 +1,7 @@
 #
-# ~/.bashrc — managed in lab/dotfiles
-#
-
-# If not running interactively, don't do anything
-[[ $- != *i* ]] && return
+# Sourced from ~/.bashrc by install.sh. The user's ~/.bashrc handles the
+# interactive-shell guard; this file assumes it is being sourced from an
+# already-interactive bash session.
 
 # ----- History
 HISTSIZE=10000
@@ -18,9 +16,6 @@ alias ll='ls -lah'
 alias la='ls -A'
 command -v lsd >/dev/null 2>&1 && alias ls='lsd'
 command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never'
-
-# ----- Fallback prompt (overridden by starship below if installed)
-PS1='[\u@\h \W]\$ '
 
 # ----- Paths
 export PATH="$PATH:$HOME/go/bin"
