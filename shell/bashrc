@@ -21,6 +21,12 @@ command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never'
 export PATH="$PATH:$HOME/go/bin"
 export PATH="$HOME/.local/bin:$PATH"
 [ -d /opt/nvim-linux64/bin ] && export PATH="/opt/nvim-linux64/bin:$PATH"
+# WSL2: expose wezterm CLI so smart-splits.nvim can cross nvim→wezterm pane boundary
+[ -d "/mnt/c/Program Files/WezTerm" ] && export PATH="$PATH:/mnt/c/Program Files/WezTerm"
+# WSL2: force tokyonight_storm background via OSC 11 so WezTerm paints it before first keypress.
+# ConPTY on Windows delays background painting until first terminal output; this triggers it.
+# No-op on Linux (WEZTERM_PANE unset outside WezTerm, or on native Linux where this isn't needed).
+[[ -n "$WEZTERM_PANE" ]] && printf '\e]11;#24283b\a'
 
 # ----- envman (auto-managed if present)
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"

@@ -182,6 +182,7 @@ lvim.plugins = {
       require("smart-splits").setup({
         at_edge = "stop",
         cursor_follows_swapped_bufs = true,
+        multiplexer_integration = 'wezterm',
       })
     end,
   },
@@ -279,18 +280,23 @@ wk.register({
   x = { name = "Trouble" },
 }, { prefix = "<leader>" })
 
--- Filter the position_encoding warning without redefining vim.notify
-local orig_notify = vim.notify
-
-vim.notify = function(msg, level, opts)
-  if msg and (
-    msg:match("position_encoding param is required") or
-    msg:match("deprecated")
-  ) then
-    return
-  end
-  orig_notify(msg, level, opts)
-end
+-- Filter position_encoding/deprecated warnings. Deferred to VimEnter so this
+-- wraps nvim-notify (which LunarVim installs after config runs).
+vim.api.nvim_create_autocmd("VimEnter", {
+  once = true,
+  callback = function()
+    local orig_notify = vim.notify
+    vim.notify = function(msg, level, opts)
+      if msg and (
+        msg:match("position_encoding param is required") or
+        msg:match("deprecated")
+      ) then
+        return
+      end
+      orig_notify(msg, level, opts)
+    end
+  end,
+})
 
 -- Nvim-tree
 lvim.builtin.nvimtree.setup.view.side = "right"

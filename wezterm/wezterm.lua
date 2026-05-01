@@ -80,6 +80,11 @@ local direction_for = {
 }
 
 local function is_vim(pane)
+  -- User var set by smart-splits.nvim (reliable on WSL2 where process name
+  -- inspection sees wsl.exe instead of nvim)
+  if pane:get_user_vars().IS_NVIM == 'true' then
+    return true
+  end
   local procname = pane:get_foreground_process_name() or ''
   return procname:match('n?vim$') ~= nil
 end
