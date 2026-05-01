@@ -25,8 +25,38 @@ config.cell_width = 1.1
 -- squares render in their place but the warning itself is just noise.
 config.warn_about_missing_glyphs = false
 
--- Colors
-config.color_scheme = "tokyonight_storm"
+-- Colors — inlined to avoid intermittent named-scheme lookup failures
+config.colors = {
+  foreground    = "#c0caf5",
+  background    = "#24283b",
+  cursor_bg     = "#c0caf5",
+  cursor_fg     = "#24283b",
+  cursor_border = "#c0caf5",
+  selection_fg  = "#c0caf5",
+  selection_bg  = "#364a82",
+  scrollbar_thumb = "#292e42",
+  split         = "#7aa2f7",
+  ansi = {
+    "#1d202f", -- black
+    "#f7768e", -- red
+    "#9ece6a", -- green
+    "#e0af68", -- yellow
+    "#7aa2f7", -- blue
+    "#bb9af7", -- magenta
+    "#7dcfff", -- cyan
+    "#a9b1d6", -- white
+  },
+  brights = {
+    "#414868", -- bright black
+    "#f7768e", -- bright red
+    "#9ece6a", -- bright green
+    "#e0af68", -- bright yellow
+    "#7aa2f7", -- bright blue
+    "#bb9af7", -- bright magenta
+    "#7dcfff", -- bright cyan
+    "#c0caf5", -- bright white
+  },
+}
 
 -- Appearance
 config.window_decorations = "RESIZE"
