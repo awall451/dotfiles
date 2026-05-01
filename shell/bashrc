@@ -1,0 +1,37 @@
+#
+# Sourced from ~/.bashrc by install.sh. The user's ~/.bashrc handles the
+# interactive-shell guard; this file assumes it is being sourced from an
+# already-interactive bash session.
+
+# ----- History
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
+shopt -s checkwinsize
+
+# ----- Aliases (cross-machine)
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias la='ls -A'
+command -v lsd >/dev/null 2>&1 && alias ls='lsd'
+command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never'
+
+# ----- Paths
+export PATH="$PATH:$HOME/go/bin"
+export PATH="$HOME/.local/bin:$PATH"
+[ -d /opt/nvim-linux64/bin ] && export PATH="/opt/nvim-linux64/bin:$PATH"
+
+# ----- envman (auto-managed if present)
+[ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
+
+# ----- fzf
+[ -f "$HOME/.config/fzf/fzf.bash" ] && source "$HOME/.config/fzf/fzf.bash"
+
+# ----- Starship prompt (must come after PATH, before .local sourcing)
+command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
+
+# ----- Per-machine overrides (work-specific aliases, project sources, etc.)
+# Keep this file in lab/dotfiles. Put machine-specific or work-specific
+# additions in ~/.bashrc.local — that file is NOT tracked by the repo.
+[ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"

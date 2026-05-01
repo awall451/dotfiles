@@ -1,0 +1,8 @@
+# bat config — symlinked to ~/.config/bat/config
+
+--theme="TwoDark"
+--style="numbers,changes,header"
+--paging=auto
+--map-syntax="*.helm:YAML"
+--map-syntax=".gitignore:Git Ignore"
+--map-syntax="Dockerfile.*:Dockerfile"

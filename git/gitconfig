@@ -1,0 +1,60 @@
+[user]
+	name = dillon.hartline
+	email = dillon.hartline@gmail.com
+
+[core]
+	autocrlf = input
+	editor = lvim
+	excludesfile = ~/.config/git/ignore
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+
+[fetch]
+	prune = true
+
+[diff]
+	algorithm = histogram
+	colorMoved = default
+
+[merge]
+	conflictStyle = zdiff3
+
+[rerere]
+	enabled = true
+
+[alias]
+	co = checkout
+	br = branch
+	st = status
+	ci = commit
+	d  = diff
+	dc = diff --cached
+	lg = log --oneline --graph --decorate --all
+	last = log -1 HEAD
+	unstage = reset HEAD --
+	amend = commit --amend --no-edit
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential
+
+# Per-machine / work-specific overrides go in ~/.gitconfig.local (untracked).
+[include]
+	path = ~/.gitconfig.local

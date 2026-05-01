@@ -127,6 +127,65 @@ lvim.plugins = {
     },
   },
 
+  -- File marks: pin a handful of hot files, jump between them with <leader>h1..4.
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    config = function()
+      local harpoon = require("harpoon")
+      harpoon:setup({})
+      vim.keymap.set("n", "<leader>ha", function() harpoon:list():add() end, { desc = "Harpoon add file" })
+      vim.keymap.set("n", "<leader>hh", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { desc = "Harpoon menu" })
+      vim.keymap.set("n", "<leader>h1", function() harpoon:list():select(1) end, { desc = "Harpoon file 1" })
+      vim.keymap.set("n", "<leader>h2", function() harpoon:list():select(2) end, { desc = "Harpoon file 2" })
+      vim.keymap.set("n", "<leader>h3", function() harpoon:list():select(3) end, { desc = "Harpoon file 3" })
+      vim.keymap.set("n", "<leader>h4", function() harpoon:list():select(4) end, { desc = "Harpoon file 4" })
+    end,
+  },
+
+  -- Edit directories as buffers. Rename/delete via vim motions, :w to commit.
+  {
+    "stevearc/oil.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    config = function()
+      require("oil").setup({
+        view_options = { show_hidden = true },
+      })
+      vim.keymap.set("n", "<leader>o", "<cmd>Oil<cr>", { desc = "Oil (edit dir)" })
+      vim.keymap.set("n", "-", "<cmd>Oil<cr>", { desc = "Oil parent dir" })
+    end,
+  },
+
+  -- Diagnostic / quickfix / references panel.
+  {
+    "folke/trouble.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    cmd = "Trouble",
+    opts = {},
+    keys = {
+      { "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>",                        desc = "Trouble diagnostics" },
+      { "<leader>xd", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>",           desc = "Buffer diagnostics" },
+      { "<leader>xs", "<cmd>Trouble symbols toggle focus=false<cr>",                desc = "Symbols" },
+      { "<leader>xl", "<cmd>Trouble lsp toggle focus=false win.position=right<cr>", desc = "LSP refs/defs" },
+      { "<leader>xq", "<cmd>Trouble qflist toggle<cr>",                             desc = "Quickfix" },
+      { "<leader>xL", "<cmd>Trouble loclist toggle<cr>",                            desc = "Location list" },
+    },
+  },
+
+  -- Unified pane navigation across nvim windows and wezterm panes.
+  -- Companion logic lives in wezterm/wezterm.lua (process-aware key handler).
+  {
+    "mrjones2014/smart-splits.nvim",
+    lazy = false,
+    config = function()
+      require("smart-splits").setup({
+        at_edge = "stop",
+        cursor_follows_swapped_bufs = true,
+      })
+    end,
+  },
+
   -- A collection of small QoL plugins for Neovim (Used for claude).
   {
     "folke/snacks.nvim",
@@ -189,12 +248,18 @@ lvim.keys.normal_mode["zp"] = function()
   require("ufo").peekFoldedLinesUnderCursor()
 end
 
--- Explorer navigation
--- Window navigation (move between splits easily)
-lvim.keys.normal_mode["<C-S-h>"] = "<C-w>h"
-lvim.keys.normal_mode["<C-S-j>"] = "<C-w>j"
-lvim.keys.normal_mode["<C-S-k>"] = "<C-w>k"
-lvim.keys.normal_mode["<C-S-l>"] = "<C-w>l"
+-- Window navigation: smart-splits handles nvim windows AND wezterm panes
+-- with a single Ctrl+hjkl. Falls through to wezterm at the nvim window edge.
+lvim.keys.normal_mode["<C-h>"] = "<cmd>SmartCursorMoveLeft<cr>"
+lvim.keys.normal_mode["<C-j>"] = "<cmd>SmartCursorMoveDown<cr>"
+lvim.keys.normal_mode["<C-k>"] = "<cmd>SmartCursorMoveUp<cr>"
+lvim.keys.normal_mode["<C-l>"] = "<cmd>SmartCursorMoveRight<cr>"
+
+-- Resize: Alt+hjkl resizes nvim window or wezterm pane based on context.
+lvim.keys.normal_mode["<M-h>"] = "<cmd>SmartResizeLeft<cr>"
+lvim.keys.normal_mode["<M-j>"] = "<cmd>SmartResizeDown<cr>"
+lvim.keys.normal_mode["<M-k>"] = "<cmd>SmartResizeUp<cr>"
+lvim.keys.normal_mode["<M-l>"] = "<cmd>SmartResizeRight<cr>"
 
 -- Keep Tree-sitter for folding/treesj/context, but stop illuminate from using it (prevents error spam)
 lvim.builtin.illuminate.options = {
@@ -210,6 +275,8 @@ wk.register({
     g = { "<cmd>lua require('treesitter-context').go_to_context()<CR>", "Go to TS context" },
   },
   j = { "<cmd>lua require('treesj').toggle()<CR>", "Toggle join/split" },
+  h = { name = "Harpoon" },
+  x = { name = "Trouble" },
 }, { prefix = "<leader>" })
 
 -- Filter the position_encoding warning without redefining vim.notify
