@@ -49,11 +49,11 @@
 
 [credential "https://github.com"]
 	helper =
-	helper = !/home/dillon/.local/bin/gh auth git-credential
+	helper = !gh auth git-credential
 
 [credential "https://gist.github.com"]
 	helper =
-	helper = !/home/dillon/.local/bin/gh auth git-credential
+	helper = !gh auth git-credential
 
 # Per-machine / work-specific overrides go in ~/.gitconfig.local (untracked).
 [include]
