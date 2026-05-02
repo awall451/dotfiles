@@ -302,20 +302,24 @@ vim.api.nvim_create_autocmd("VimEnter", {
 lvim.builtin.nvimtree.setup.view.side = "right"
 lvim.builtin.nvimtree.setup.view.width = 50
 
--- Windows clipboard fix maybe
-vim.opt.clipboard:append("unnamedplus")
-vim.g.clipboard = {
-  name = "win32yank-wsl",
-  copy = {
-    ["+"] = "win32yank.exe -i --crlf",
-    ["*"] = "win32yank.exe -i --crlf",
-  },
-  paste = {
-    ["+"] = "win32yank.exe -o --lf",
-    ["*"] = "win32yank.exe -o --lf",
-  },
-  cache_enabled = 0,
-}
+-- WSL clipboard via win32yank (native Linux/macOS use nvim defaults)
+local is_wsl = vim.fn.has("wsl") == 1
+  or ((vim.uv or vim.loop).os_uname().release:lower():match("microsoft") ~= nil)
+if is_wsl then
+  vim.opt.clipboard:append("unnamedplus")
+  vim.g.clipboard = {
+    name = "win32yank-wsl",
+    copy = {
+      ["+"] = "win32yank.exe -i --crlf",
+      ["*"] = "win32yank.exe -i --crlf",
+    },
+    paste = {
+      ["+"] = "win32yank.exe -o --lf",
+      ["*"] = "win32yank.exe -o --lf",
+    },
+    cache_enabled = 0,
+  }
+end
 
 -- Detach yamlls from helm buffers after it attaches
 vim.api.nvim_create_autocmd("LspAttach", {
