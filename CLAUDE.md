@@ -49,6 +49,7 @@ Other tool-specific cross-platform notes:
 
 - **ripgrep does not auto-load `ripgreprc`.** `install.sh` symlinks `cli/ripgreprc` to `~/.config/ripgrep/ripgreprc`, but ripgrep only reads it if `RIPGREP_CONFIG_PATH` points at the file. `shell/bashrc` does **not** export this variable; the user expects to set it in `~/.bashrc.local`. If a request like "why is rg ignoring my excludes" comes up, this is almost always why.
 - **gitconfig hardcodes `/home/dillon/.local/bin/gh`** in the credential helper. Cross-machine port → flip to plain `gh auth git-credential` (relies on `$PATH`) or update the path.
+- **WezTerm `Ctrl+U/D` scrollback may interact badly with mouse-wheel scroll.** Commit `a466717` added a process-aware `scroll_or_forward` handler in `wezterm/wezterm.lua` that calls `act.ScrollByPage(±0.5)` for `Ctrl+U/D` in shell panes. User has reported one intermittent incident where mouse-wheel scroll caused the active pane / cursor to oscillate between panes nonstop, requiring a wezterm restart. Not yet reproduced; suspected interaction between fractional `ScrollByPage` and wezterm's mouse-scroll handling, or possibly a focus-follow side effect from `pane:get_foreground_process_name()` being polled mid-scroll. If it recurs: try `act.ScrollByLine(±N)` instead of fractional `ScrollByPage`, or gate the bind by `is_shell` allowlist instead of the current `ctrl_ud_apps` blacklist.
 
 ## Bashrc deployment (special case)
 
