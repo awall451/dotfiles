@@ -1,6 +1,6 @@
 [user]
 	name = dillon.hartline
-	email = dillon.hartline@gmail.com
+	email = JHartline@slb.com
 
 [core]
 	autocrlf = input
@@ -58,3 +58,15 @@
 # Per-machine / work-specific overrides go in ~/.gitconfig.local (untracked).
 [include]
 	path = ~/.gitconfig.local
+
+[includeIf "hasconfig:remote.*.url:https://github.com/awall451/**"]
+	path = ~/.gitconfig-personal
+
+[includeIf "hasconfig:remote.*.url:https://git.projectorion.net/**"]
+	path = ~/.gitconfig-personal
+
+[includeIf "hasconfig:remote.*.url:git@github.com:awall451/**"]
+	path = ~/.gitconfig-personal
+
+[includeIf "hasconfig:remote.*.url:git@git.projectorion.net:**"]
+	path = ~/.gitconfig-personal
