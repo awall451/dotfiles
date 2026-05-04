@@ -23,6 +23,18 @@ export PATH="$HOME/.local/bin:$PATH"
 [ -d /opt/nvim-linux64/bin ] && export PATH="/opt/nvim-linux64/bin:$PATH"
 # WSL2: expose wezterm CLI so smart-splits.nvim can cross nvim→wezterm pane boundary
 [ -d "/mnt/c/Program Files/WezTerm" ] && export PATH="$PATH:/mnt/c/Program Files/WezTerm"
+# WSL2: set WSLg X11/Wayland display so xclip and wl-paste can bridge the Windows clipboard
+# (needed for Claude Code image paste, screenshot→clipboard workflows, etc.).
+# WSLg only bridges text — binary image data does not round-trip — so prepend
+# the repo's wsl-bin/ which holds xclip/wl-paste wrappers that fill the gap by
+# shelling out to PowerShell against the Win32 clipboard for image reads.
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    [[ -z "$DISPLAY" ]] && export DISPLAY=:0
+    [[ -z "$WAYLAND_DISPLAY" ]] && export WAYLAND_DISPLAY=wayland-0
+    __dotfiles_wsl_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/wsl-bin"
+    [[ -d "$__dotfiles_wsl_bin" ]] && export PATH="$__dotfiles_wsl_bin:$PATH"
+    unset __dotfiles_wsl_bin
+fi
 # WSL2: force tokyonight_storm background via OSC 11 so WezTerm paints it before first keypress.
 # ConPTY on Windows delays background painting until first terminal output; this triggers it.
 # No-op on Linux (WEZTERM_PANE unset outside WezTerm, or on native Linux where this isn't needed).

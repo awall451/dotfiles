@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# wl-paste wrapper for WSL2.
+#
+# Mirror of the xclip wrapper for the Wayland clipboard tool. WSLg sets
+# WAYLAND_DISPLAY=wayland-0 so apps may prefer wl-paste over xclip; the same
+# image-bridge gap applies. Image reads are satisfied via PowerShell against
+# the Win32 clipboard; everything else passes through to the real wl-paste.
+#
+# Activated only on WSL2 via PATH ordering set in shell/bashrc.
+
+set -uo pipefail
+
+REAL_WL_PASTE=/usr/bin/wl-paste
+
+list_types=0
+type_arg=""
+i=1
+while [ $i -le $# ]; do
+    arg="${!i}"
+    case "$arg" in
+        -l|--list-types) list_types=1 ;;
+        -t|--type)       i=$((i+1)); type_arg="${!i:-}" ;;
+        --type=*)        type_arg="${arg#--type=}" ;;
+    esac
+    i=$((i+1))
+done
+
+ps_has_image() {
+    local out
+    out="$(powershell.exe -NoProfile -NonInteractive -Command \
+        "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::ContainsImage()" \
+        2>/dev/null)" || return 1
+    [[ "$(printf '%s' "$out" | tr -d '\r\n[:space:]')" == "True" ]]
+}
+
+ps_dump_png() {
+    local tmp_win tmp_wsl
+    tmp_win="$(powershell.exe -NoProfile -NonInteractive -Command \
+        "[System.IO.Path]::GetTempFileName()" 2>/dev/null | tr -d '\r\n')"
+    [[ -z "$tmp_win" ]] && return 1
+
+    powershell.exe -NoProfile -NonInteractive -Command "
+        Add-Type -AssemblyName System.Windows.Forms;
+        Add-Type -AssemblyName System.Drawing;
+        \$img = [System.Windows.Forms.Clipboard]::GetImage();
+        if (\$img -ne \$null) {
+            \$img.Save('$tmp_win', [System.Drawing.Imaging.ImageFormat]::Png);
+        }
+    " >/dev/null 2>&1
+
+    tmp_wsl="$(wslpath "$tmp_win" 2>/dev/null)" || return 1
+    if [[ -s "$tmp_wsl" ]]; then
+        cat "$tmp_wsl"
+        rm -f "$tmp_wsl"
+        return 0
+    fi
+    rm -f "$tmp_wsl" 2>/dev/null
+    return 1
+}
+
+if [[ "$type_arg" == "image/png" ]]; then
+    if ps_has_image && ps_dump_png; then
+        exit 0
+    fi
+fi
+
+if [[ "$list_types" -eq 1 ]]; then
+    real_out="$("$REAL_WL_PASTE" "$@" 2>/dev/null || true)"
+    if ps_has_image && ! grep -qx 'image/png' <<<"$real_out"; then
+        if [[ -n "$real_out" ]]; then
+            printf '%s\nimage/png\n' "$real_out"
+        else
+            printf 'image/png\n'
+        fi
+    else
+        printf '%s' "$real_out"
+        [[ -n "$real_out" ]] && printf '\n'
+    fi
+    exit 0
+fi
+
+if [[ -x "$REAL_WL_PASTE" ]]; then
+    exec "$REAL_WL_PASTE" "$@"
+fi
+# wl-paste not installed but caller invoked it; succeed silently with no output
+# rather than failing — text paths handle this elsewhere.
+exit 0

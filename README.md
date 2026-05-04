@@ -161,6 +161,7 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 - Sources `~/.config/fzf/fzf.bash` (rg-backed file search, bat preview).
 - Inits `starship` if installed.
 - Sources `~/.bashrc.local` last.
+- **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset) and prepends `shell/wsl-bin/` to `$PATH`. That directory holds shim wrappers for `xclip` and `wl-paste` that bridge **Windows clipboard image data** (e.g. `Win+Shift+S` screenshots) into WSL2 by shelling out to PowerShell against the Win32 clipboard. WSLg only round-trips text — image bytes never appear on the X11/Wayland selection — so the wrappers fill that gap. Required for Claude Code image paste and any other tool that reads clipboard images via xclip/wl-paste. Text reads/writes are passed through to the real `/usr/bin/xclip` and `/usr/bin/wl-paste`. Requires `xclip` to be installed: `sudo apt install xclip`.
 
 `shell/starship.toml` is a two-line tokyo-night-flavoured prompt with git status, cmd duration, language version icons. Edit symbols in the `[lang]` blocks.
 

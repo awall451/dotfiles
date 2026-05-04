@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# xclip wrapper for WSL2.
+#
+# WSLg bridges text clipboard between Windows and WSL2 over X11/Wayland, but
+# binary image data does NOT round-trip through the bridge — a Windows
+# screenshot lands in the Win32 clipboard but never appears as image/png on
+# the X11 CLIPBOARD selection. This wrapper detects xclip image reads and
+# satisfies them by shelling out to PowerShell against the Win32 clipboard.
+#
+# All other xclip invocations pass through to the real xclip unchanged so text
+# copy/paste, primary selection, etc. behave normally.
+#
+# Activated only on WSL2 by being added to PATH ahead of /usr/bin/xclip from
+# shell/bashrc; native Linux never sees this script.
+
+set -uo pipefail
+
+REAL_XCLIP=/usr/bin/xclip
+
+# Parse the xclip flags we care about. Unknown flags are ignored here but
+# preserved for the passthrough exec below.
+mode=""
+selection="primary"
+target="STRING"
+i=1
+while [ $i -le $# ]; do
+    arg="${!i}"
+    case "$arg" in
+        -i|-in)            mode=in ;;
+        -o|-out)           mode=out ;;
+        -sel|-selection)   i=$((i+1)); selection="${!i:-clipboard}" ;;
+        -t|-target)        i=$((i+1)); target="${!i:-STRING}" ;;
+    esac
+    i=$((i+1))
+done
+
+ps_has_image() {
+    local out
+    out="$(powershell.exe -NoProfile -NonInteractive -Command \
+        "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::ContainsImage()" \
+        2>/dev/null)" || return 1
+    [[ "$(printf '%s' "$out" | tr -d '\r\n[:space:]')" == "True" ]]
+}
+
+ps_dump_png() {
+    # PowerShell binary stdout is unreliable across the WSL boundary; route
+    # through a Windows temp file and cat the wslpath translation instead.
+    local tmp_win tmp_wsl
+    tmp_win="$(powershell.exe -NoProfile -NonInteractive -Command \
+        "[System.IO.Path]::GetTempFileName()" 2>/dev/null | tr -d '\r\n')"
+    [[ -z "$tmp_win" ]] && return 1
+
+    powershell.exe -NoProfile -NonInteractive -Command "
+        Add-Type -AssemblyName System.Windows.Forms;
+        Add-Type -AssemblyName System.Drawing;
+        \$img = [System.Windows.Forms.Clipboard]::GetImage();
+        if (\$img -ne \$null) {
+            \$img.Save('$tmp_win', [System.Drawing.Imaging.ImageFormat]::Png);
+        }
+    " >/dev/null 2>&1
+
+    tmp_wsl="$(wslpath "$tmp_win" 2>/dev/null)" || return 1
+    if [[ -s "$tmp_wsl" ]]; then
+        cat "$tmp_wsl"
+        rm -f "$tmp_wsl"
+        return 0
+    fi
+    rm -f "$tmp_wsl" 2>/dev/null
+    return 1
+}
+
+# Image read: -o on clipboard with image/png target → dump from Win32 clipboard.
+if [[ "$mode" == "out" && "$selection" == "clipboard" && "$target" == "image/png" ]]; then
+    if ps_has_image && ps_dump_png; then
+        exit 0
+    fi
+    # No image in Windows clipboard — fall through to real xclip in case
+    # something else populated the X11 selection.
+fi
+
+# TARGETS read: surface image/png to callers when Windows has an image but
+# WSLg never advertised it on the X11 selection.
+if [[ "$mode" == "out" && "$selection" == "clipboard" && "$target" == "TARGETS" ]]; then
+    real_out="$("$REAL_XCLIP" "$@" 2>/dev/null || true)"
+    if ps_has_image && ! grep -qx 'image/png' <<<"$real_out"; then
+        if [[ -n "$real_out" ]]; then
+            printf '%s\nimage/png\n' "$real_out"
+        else
+            printf 'TARGETS\nimage/png\n'
+        fi
+    else
+        printf '%s' "$real_out"
+        [[ -n "$real_out" ]] && printf '\n'
+    fi
+    exit 0
+fi
+
+exec "$REAL_XCLIP" "$@"
