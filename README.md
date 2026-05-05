@@ -14,7 +14,8 @@ Per-machine drift goes in untracked override files:
 | File | Purpose |
 |------|---------|
 | `~/.bashrc.local` | work aliases, project `source`s, `RIPGREP_CONFIG_PATH` exports |
-| `~/.gitconfig.local` | work email, signing keys, credential helpers |
+| `~/.gitconfig.local` | per-machine signing keys, credential helpers (non-identity) |
+| `~/.gitconfig-work` | work `[user]` block — auto-loaded only for Azure DevOps remotes |
 | `~/.config/wezterm/local.lua` | per-machine wezterm tweaks (e.g. smaller font) |
 
 ---
@@ -220,7 +221,8 @@ Aliases:
 - Diff: `algorithm=histogram`, `colorMoved=default`.
 - Editor: `lvim`. Credential helper: `gh auth git-credential`.
 - Aliases: `co`, `br`, `st`, `ci`, `d`, `dc`, `lg`, `last`, `unstage`, `amend`.
-- Includes `~/.gitconfig.local` at the end (work email / signing keys).
+- Default `[user]` is the personal identity. Azure DevOps remotes (`**dev.azure.com**`, `**visualstudio.com**`) auto-load `~/.gitconfig-work` for the work identity via `[includeIf "hasconfig:remote.*.url:..."]`. Drop a `[user]` block into `~/.gitconfig-work` on the work machine; leave it absent everywhere else.
+- `~/.gitconfig.local` is `[include]`-d at the end for non-identity per-machine bits (signing keys, credential helpers).
 
 `git/gitignore_global` is symlinked to `~/.config/git/ignore` and applies to every repo.
 

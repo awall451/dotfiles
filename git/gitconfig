@@ -1,6 +1,6 @@
 [user]
 	name = dillon.hartline
-	email = JHartline@slb.com
+	email = dillon.hartline@gmail.com
 
 [core]
 	autocrlf = input
@@ -55,18 +55,16 @@
 	helper =
 	helper = !gh auth git-credential
 
-# Per-machine / work-specific overrides go in ~/.gitconfig.local (untracked).
+# Per-machine non-identity overrides (signing keys, credential helpers, etc.).
+# Untracked. Loads unconditionally if present.
 [include]
 	path = ~/.gitconfig.local
 
-[includeIf "hasconfig:remote.*.url:https://github.com/awall451/**"]
-	path = ~/.gitconfig-personal
+# Work identity is loaded ONLY for Azure DevOps remotes. The work machine
+# must create ~/.gitconfig-work with [user] email = <work-email>. Personal
+# machines leave the file absent → these blocks no-op.
+[includeIf "hasconfig:remote.*.url:**dev.azure.com**"]
+	path = ~/.gitconfig-work
 
-[includeIf "hasconfig:remote.*.url:https://git.projectorion.net/**"]
-	path = ~/.gitconfig-personal
-
-[includeIf "hasconfig:remote.*.url:git@github.com:awall451/**"]
-	path = ~/.gitconfig-personal
-
-[includeIf "hasconfig:remote.*.url:git@git.projectorion.net:**"]
-	path = ~/.gitconfig-personal
+[includeIf "hasconfig:remote.*.url:**visualstudio.com**"]
+	path = ~/.gitconfig-work
