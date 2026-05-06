@@ -63,8 +63,15 @@
 # Work identity is loaded ONLY for Azure DevOps remotes. The work machine
 # must create ~/.gitconfig-work with [user] email = <work-email>. Personal
 # machines leave the file absent → these blocks no-op.
-[includeIf "hasconfig:remote.*.url:**dev.azure.com**"]
+#
+# Patterns use git's wildmatch with WM_PATHNAME: `*` does not cross `/`, and
+# `**` only spans path components when bordered by `/` (or string ends).
+# Bare `**dev.azure.com**` does NOT match — it must straddle a `/`.
+[includeIf "hasconfig:remote.*.url:https://dev.azure.com/**"]
 	path = ~/.gitconfig-work
 
-[includeIf "hasconfig:remote.*.url:**visualstudio.com**"]
+[includeIf "hasconfig:remote.*.url:git@ssh.dev.azure.com:*/**"]
+	path = ~/.gitconfig-work
+
+[includeIf "hasconfig:remote.*.url:https://*.visualstudio.com/**"]
 	path = ~/.gitconfig-work
