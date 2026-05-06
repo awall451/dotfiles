@@ -53,6 +53,12 @@ bind '"\ek": unix-line-discard' 2>/dev/null
 # ----- Starship prompt (must come after PATH, before .local sourcing)
 command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
 
+# ----- recall: reminder CLI + morning briefing
+__recall_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+[ -f "$__recall_dir/recall.sh" ] && source "$__recall_dir/recall.sh"
+unset __recall_dir
+command -v __recall_briefing_maybe >/dev/null 2>&1 && __recall_briefing_maybe
+
 # ----- Per-machine overrides (work-specific aliases, project sources, etc.)
 # Keep this file in lab/dotfiles. Put machine-specific or work-specific
 # additions in ~/.bashrc.local — that file is NOT tracked by the repo.

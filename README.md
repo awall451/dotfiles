@@ -168,6 +168,52 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 
 ---
 
+## Recall (reminders + morning briefing)
+
+Defined in `shell/recall.sh`, sourced from `shell/bashrc`. Personal reminders that surface as a "morning briefing" the first time you open an interactive shell each day.
+
+### Subcommands
+
+| Command | Behaviour |
+|---------|-----------|
+| `recall` | Interactive prompt: "What to remember?" → "When? [tomorrow]" |
+| `recall <text>...` | Save reminder, due `tomorrow` |
+| `recall --when "<phrase>" <text>...` | Save with a natural-language due date |
+| `recall list` (or `ls`) | List open reminders, sorted by due date |
+| `recall done <id-or-prefix>` | Mark a reminder done (moves the line to `archive.jsonl`) |
+| `recall show` (or `briefing`) | Print the morning briefing now, regardless of last-shown stamp |
+| `recall demo` | Render a sample briefing against fake reminders (real state untouched) |
+| `recall help` | Usage |
+
+### Date phrases
+
+Common natural-language phrases work directly: `today`, `tomorrow`, `friday`, `next monday`, `next week`, `start of next week`, `end of week`, `end of next week`, `weekend`, `in 3 days`, `+2 weeks`. A small alias table normalizes the fuzzier phrases (`start of next week` → `next monday`, `end of week` → `friday`, etc.) and everything else is forwarded to GNU `date -d`.
+
+### When the briefing fires
+
+On every interactive shell startup, the bashrc hook `__recall_briefing_maybe` runs:
+
+1. Skips if `$RECALL_HOME/last_shown` already equals today's date.
+2. Skips if the current time is earlier than `$RECALL_BRIEFING_AFTER` (default `05:00`).
+3. Skips silently if there are no reminders due-or-overdue.
+4. Otherwise prints the briefing and stamps today's date to `last_shown`.
+
+The fast-path is just a stamp file read + a string compare; no `jq` invocation or file scan happens until step 4.
+
+### State
+
+| Path | Contents |
+|------|----------|
+| `~/.local/share/recall/reminders.jsonl` | One JSON object per open reminder: `{id, created_at, due, text}` |
+| `~/.local/share/recall/archive.jsonl` | Same shape + `done_at`, appended whenever you `recall done <id>` |
+| `~/.local/share/recall/last_shown` | Single line, `YYYY-MM-DD`, the date the briefing last ran |
+
+Override the directory via `RECALL_HOME`. Override the briefing time gate via `RECALL_BRIEFING_AFTER` (`HH:MM`).
+
+Requires `jq`. The briefing hook silently no-ops when `jq` is missing, so a fresh machine without `jq` will not break shell startup.
+
+---
+
 ## CLI tools
 
 ### ripgrep (`cli/ripgreprc`)
