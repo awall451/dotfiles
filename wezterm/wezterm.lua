@@ -132,6 +132,9 @@ config.keys = {
   -- Vertical split
   { key = 'o', mods = 'CTRL|SHIFT', action = act.SplitVertical { domain = 'CurrentPaneDomain' } },
 
+  -- Close current pane (not tab/window)
+  { key = 'w', mods = 'CTRL|ALT', action = act.CloseCurrentPane { confirm = false } },
+
   -- Pane navigation (Ctrl+hjkl) — smart-splits-aware
   { key = 'h', mods = 'CTRL', action = smart_split_action('move', 'h') },
   { key = 'j', mods = 'CTRL', action = smart_split_action('move', 'j') },
