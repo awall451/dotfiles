@@ -102,29 +102,6 @@ local function smart_split_action(mode, key)
   end)
 end
 
--- Vim-style scrollback: Ctrl+U/D scrolls half-page in shell, but is forwarded
--- to apps that bind Ctrl+U/D themselves (vim, pagers, TUIs).
-local ctrl_ud_apps = {
-  less = true, more = true, most = true, man = true,
-  htop = true, btop = true, top = true,
-  fzf = true, lazygit = true, tig = true, gitui = true,
-}
-
-local function scroll_or_forward(key, amount)
-  return wezterm.action_callback(function(win, pane)
-    if is_vim(pane) then
-      win:perform_action(act.SendKey { key = key, mods = 'CTRL' }, pane)
-      return
-    end
-    local proc = (pane:get_foreground_process_name() or ''):match('([^/\\]+)$') or ''
-    if ctrl_ud_apps[proc] then
-      win:perform_action(act.SendKey { key = key, mods = 'CTRL' }, pane)
-    else
-      win:perform_action(act.ScrollByPage(amount), pane)
-    end
-  end)
-end
-
 config.keys = {
   -- Horizontal split
   { key = 'e', mods = 'CTRL|SHIFT', action = act.SplitHorizontal { domain = 'CurrentPaneDomain' } },
@@ -146,10 +123,6 @@ config.keys = {
   { key = 'j', mods = 'ALT', action = smart_split_action('resize', 'j') },
   { key = 'k', mods = 'ALT', action = smart_split_action('resize', 'k') },
   { key = 'l', mods = 'ALT', action = smart_split_action('resize', 'l') },
-
-  -- Vim-style scrollback (Ctrl+U/D) — forwarded to vim/pagers/TUIs, scrolls in shell
-  { key = 'u', mods = 'CTRL', action = scroll_or_forward('u', -0.5) },
-  { key = 'd', mods = 'CTRL', action = scroll_or_forward('d',  0.5) },
 }
 
 config.disable_default_key_bindings = false

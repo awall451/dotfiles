@@ -40,10 +40,6 @@ fi
 # No-op on Linux (WEZTERM_PANE unset outside WezTerm, or on native Linux where this isn't needed).
 [[ -n "$WEZTERM_PANE" ]] && printf '\e]11;#24283b\a'
 
-# ----- Readline: Ctrl+U is taken by wezterm for scrollback. Move kill-line
-# (unix-line-discard) to Alt+k so it's still reachable from the shell.
-bind '"\ek": unix-line-discard' 2>/dev/null
-
 # ----- envman (auto-managed if present)
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh"
 
