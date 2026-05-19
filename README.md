@@ -124,6 +124,10 @@ Note: `terminal_cmd` hardcodes `/home/dillon/.local/bin/claude`. Edit on other m
 
 Preview plugin needs `npm install` on first load (`cd app && npm install` runs automatically).
 
+**Browser preview styling** — `iamcco/markdown-preview.nvim` reads `lunarvim/markdown-preview.css` (tokyonight cyberpunk palette, wider column, neon glow). Path is resolved at runtime via `vim.fn.resolve($MYVIMRC)`, so it works on any machine that has the lvim config symlinked from this repo. Edit the CSS to retune colors.
+
+**In-buffer rendering** — `MeanderingProgrammer/render-markdown.nvim` decorates `.md` buffers directly (headings, code blocks, bullets, checkboxes, tables) using tokyonight colors. No browser needed. Toggles via `:RenderMarkdown` / `:RenderMarkdown toggle`. Highlight groups are reapplied on `ColorScheme` so a colorscheme switch keeps the cyberpunk palette.
+
 ### Treesitter / treesj
 
 | Key | Action |

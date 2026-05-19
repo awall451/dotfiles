@@ -90,6 +90,111 @@ lvim.plugins = {
     ft = { "markdown" },
     build = "cd app && npm install",
     cmd = { "MarkdownPreview", "MarkdownPreviewStop", "MarkdownPreviewToggle" },
+    init = function()
+      -- Resolve dotfiles/lunarvim dir via symlinked $MYVIMRC so the CSS path
+      -- works on any machine without hardcoding the repo location.
+      local rc = vim.fn.resolve(vim.fn.expand("$MYVIMRC"))
+      local lvim_dotfiles = vim.fn.fnamemodify(rc, ":h")
+      vim.g.mkdp_theme = "dark"
+      vim.g.mkdp_markdown_css = lvim_dotfiles .. "/markdown-preview.css"
+      vim.g.mkdp_page_title = "「${name}」"
+      vim.g.mkdp_preview_options = {
+        mkit = {},
+        katex = {},
+        uml = {},
+        maid = {},
+        disable_sync_scroll = 0,
+        sync_scroll_type = "middle",
+        hide_yaml_meta = 1,
+        sequence_diagrams = {},
+        flowchart_diagrams = {},
+        content_editable = false,
+        disable_filename = 0,
+        toc = {},
+      }
+    end,
+  },
+
+  -- In-buffer markdown rendering (tokyonight cyberpunk palette)
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = { "markdown" },
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter",
+      "nvim-tree/nvim-web-devicons",
+    },
+    config = function()
+      require("render-markdown").setup({
+        heading = {
+          sign = false,
+          width = "block",
+          left_pad = 1,
+          right_pad = 4,
+          icons = { "█ ", "██ ", "███ ", "████ ", "█████ ", "██████ " },
+          backgrounds = {
+            "RenderMarkdownH1Bg",
+            "RenderMarkdownH2Bg",
+            "RenderMarkdownH3Bg",
+            "RenderMarkdownH4Bg",
+            "RenderMarkdownH5Bg",
+            "RenderMarkdownH6Bg",
+          },
+          foregrounds = {
+            "RenderMarkdownH1",
+            "RenderMarkdownH2",
+            "RenderMarkdownH3",
+            "RenderMarkdownH4",
+            "RenderMarkdownH5",
+            "RenderMarkdownH6",
+          },
+        },
+        code = {
+          sign = false,
+          width = "block",
+          right_pad = 2,
+          border = "thick",
+        },
+        bullet = {
+          icons = { "◆", "✦", "▶", "▷" },
+        },
+        checkbox = {
+          unchecked = { icon = "󰄱 " },
+          checked = { icon = "󰡖 " },
+        },
+        quote = { icon = "▎" },
+        pipe_table = { style = "full" },
+      })
+
+      local function apply_hl()
+        local hl = vim.api.nvim_set_hl
+        hl(0, "RenderMarkdownH1", { fg = "#bb9af7", bold = true })
+        hl(0, "RenderMarkdownH2", { fg = "#7dcfff", bold = true })
+        hl(0, "RenderMarkdownH3", { fg = "#7aa2f7", bold = true })
+        hl(0, "RenderMarkdownH4", { fg = "#9ece6a", bold = true })
+        hl(0, "RenderMarkdownH5", { fg = "#e0af68", bold = true })
+        hl(0, "RenderMarkdownH6", { fg = "#f7768e", bold = true })
+        hl(0, "RenderMarkdownH1Bg", { bg = "#2a1f3d" })
+        hl(0, "RenderMarkdownH2Bg", { bg = "#1f2c3d" })
+        hl(0, "RenderMarkdownH3Bg", { bg = "#1f263d" })
+        hl(0, "RenderMarkdownH4Bg", { bg = "#1f3d28" })
+        hl(0, "RenderMarkdownH5Bg", { bg = "#3d3520" })
+        hl(0, "RenderMarkdownH6Bg", { bg = "#3d2228" })
+        hl(0, "RenderMarkdownCode", { bg = "#16161e" })
+        hl(0, "RenderMarkdownCodeInline", { fg = "#ff9e64", bg = "#1f2335" })
+        hl(0, "RenderMarkdownBullet", { fg = "#bb9af7" })
+        hl(0, "RenderMarkdownQuote", { fg = "#7dcfff" })
+        hl(0, "RenderMarkdownTableHead", { fg = "#bb9af7", bold = true })
+        hl(0, "RenderMarkdownTableRow", { fg = "#7aa2f7" })
+        hl(0, "RenderMarkdownLink", { fg = "#7dcfff", underline = true })
+        hl(0, "RenderMarkdownDash", { fg = "#bb9af7" })
+        hl(0, "RenderMarkdownChecked", { fg = "#9ece6a" })
+        hl(0, "RenderMarkdownUnchecked", { fg = "#565f89" })
+      end
+      apply_hl()
+      vim.api.nvim_create_autocmd("ColorScheme", {
+        callback = apply_hl,
+      })
+    end,
   },
   {
     "b0o/schemastore.nvim",
