@@ -127,10 +127,15 @@ lvim.plugins = {
       require("render-markdown").setup({
         heading = {
           sign = false,
-          width = "block",
-          left_pad = 1,
+          position = "overlay",
+          width = "full",
+          border = true,
+          border_virtual = true,
+          above = "▄",
+          below = "▀",
+          left_pad = 2,
           right_pad = 4,
-          icons = { "█ ", "██ ", "███ ", "████ ", "█████ ", "██████ " },
+          icons = { "󰉫  ", "󰉬  ", "󰉭  ", "󰉮  ", "󰉯  ", "󰉰  " },
           backgrounds = {
             "RenderMarkdownH1Bg",
             "RenderMarkdownH2Bg",
@@ -167,18 +172,22 @@ lvim.plugins = {
 
       local function apply_hl()
         local hl = vim.api.nvim_set_hl
-        hl(0, "RenderMarkdownH1", { fg = "#bb9af7", bold = true })
-        hl(0, "RenderMarkdownH2", { fg = "#7dcfff", bold = true })
-        hl(0, "RenderMarkdownH3", { fg = "#7aa2f7", bold = true })
-        hl(0, "RenderMarkdownH4", { fg = "#9ece6a", bold = true })
-        hl(0, "RenderMarkdownH5", { fg = "#e0af68", bold = true })
-        hl(0, "RenderMarkdownH6", { fg = "#f7768e", bold = true })
-        hl(0, "RenderMarkdownH1Bg", { bg = "#2a1f3d" })
-        hl(0, "RenderMarkdownH2Bg", { bg = "#1f2c3d" })
-        hl(0, "RenderMarkdownH3Bg", { bg = "#1f263d" })
-        hl(0, "RenderMarkdownH4Bg", { bg = "#1f3d28" })
-        hl(0, "RenderMarkdownH5Bg", { bg = "#3d3520" })
-        hl(0, "RenderMarkdownH6Bg", { bg = "#3d2228" })
+        local heading_colors = {
+          { fg = "#bb9af7", bg = "#3a2855" }, -- H1 magenta
+          { fg = "#7dcfff", bg = "#1f3a55" }, -- H2 cyan
+          { fg = "#7aa2f7", bg = "#1f2e55" }, -- H3 blue
+          { fg = "#9ece6a", bg = "#1f4a28" }, -- H4 green
+          { fg = "#e0af68", bg = "#4a3a1a" }, -- H5 yellow
+          { fg = "#f7768e", bg = "#4a1f2e" }, -- H6 pink
+        }
+        for i, c in ipairs(heading_colors) do
+          hl(0, "RenderMarkdownH" .. i, { fg = c.fg, bg = c.bg, bold = true })
+          hl(0, "RenderMarkdownH" .. i .. "Bg", { bg = c.bg })
+          -- Paint the actual heading text via treesitter + legacy groups so
+          -- the neon color reaches the prose, not just the icon prefix.
+          hl(0, "@markup.heading." .. i .. ".markdown", { fg = c.fg, bg = c.bg, bold = true })
+          hl(0, "markdownH" .. i, { fg = c.fg, bg = c.bg, bold = true })
+        end
         hl(0, "RenderMarkdownCode", { bg = "#16161e" })
         hl(0, "RenderMarkdownCodeInline", { fg = "#ff9e64", bg = "#1f2335" })
         hl(0, "RenderMarkdownBullet", { fg = "#bb9af7" })
