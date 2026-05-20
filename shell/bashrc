@@ -16,6 +16,7 @@ alias ll='ls -lah'
 alias la='ls -A'
 command -v lsd >/dev/null 2>&1 && alias ls='lsd'
 command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never --style=plain'
+command -v wezterm >/dev/null 2>&1 && alias imcat='wezterm imgcat'
 
 # ----- Paths
 export PATH="$PATH:$HOME/go/bin"
@@ -49,6 +50,9 @@ fi
 # ----- Starship prompt (must come after PATH, before .local sourcing)
 command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
 
+# ----- zoxide (smart cd: `z foo` jumps by frecency, `zi` fuzzy-picks)
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
+
 # ----- recall: reminder CLI + morning briefing
 __recall_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 [ -f "$__recall_dir/recall.sh" ] && source "$__recall_dir/recall.sh"
@@ -62,3 +66,59 @@ command -v __recall_briefing_maybe >/dev/null 2>&1 && __recall_briefing_maybe
 
 # ----- Wezterm quick command to change tab title name
 tt() { wezterm cli set-tab-title "$1"; }
+
+# ----- coolstuff: cheat sheet for the modern CLI tools wired up in this repo
+coolstuff() {
+  local b=$'\033[1m' c=$'\033[36m' g=$'\033[32m' y=$'\033[33m' d=$'\033[2m' r=$'\033[0m'
+  cat <<EOF
+${c}${b}== Cool stuff cheat sheet ==${r}
+
+${g}${b}delta${r} ${d}— git diff pager (auto-active via gitconfig)${r}
+  git log -p          ${d}# scrollable history with diffs${r}
+  git show HEAD       ${d}# side-by-side commit view${r}
+  git diff HEAD~3     ${d}# multi-commit diff${r}
+  ${y}n${r}/${y}N${r} next/prev file, ${y}q${r} quit
+
+${g}${b}glow${r} ${d}— terminal markdown render${r}
+  glow README.md      ${d}# render once${r}
+  glow -p file.md     ${d}# paged mode${r}
+  glow                ${d}# TUI: browse .md in cwd${r}
+
+${g}${b}btop${r} ${d}— system monitor${r}
+  btop
+  ${y}?${r} help, ${y}Esc${r} menu, ${y}q${r} quit, ${y}t${r} tree, ${y}f${r} filter, ${y}+${r}/${y}-${r} rate
+
+${g}${b}procs${r} ${d}— modern ps${r}
+  procs               ${d}# all, colored${r}
+  procs --tree        ${d}# tree view${r}
+  procs <pattern>     ${d}# filter by name${r}
+  procs --sortd cpu   ${d}# sort desc by cpu${r}
+  procs --watch       ${d}# live refresh${r}
+
+${g}${b}onefetch${r} ${d}— repo summary card${r}
+  onefetch            ${d}# run inside any git repo${r}
+
+${g}${b}yazi${r} ${d}— TUI file manager (inline image preview in wezterm)${r}
+  yazi
+  ${y}hjkl${r} nav, ${y}Enter${r} open, ${y}Space${r} select
+  ${y}y${r}/${y}p${r}/${y}d${r} copy/paste/cut, ${y}D${r} trash, ${y}a${r} create, ${y}r${r} rename
+  ${y}/${r} search, ${y}s${r} shell, ${y}?${r} help, ${y}q${r} quit
+
+${g}${b}zoxide${r} ${d}— smart cd by frecency${r}
+  z <partial>         ${d}# jump (must have visited dir before)${r}
+  zi                  ${d}# fuzzy picker over learned dirs${r}
+  z -                 ${d}# back to previous dir${r}
+  zoxide query --list ${d}# inspect rankings${r}
+
+${g}${b}imcat${r} ${d}— inline image render (wezterm)${r}
+  imcat path/to/img.png
+
+${g}${b}gitsigns${r} ${d}— inline git blame in lvim (built-in)${r}
+  Sign column ${y}+${r}/${y}~${r}/${y}-${r} marks hunks vs HEAD
+  Blame virt-text appears at EOL after 300ms idle
+  ${y}<leader>gj${r}/${y}gk${r} next/prev hunk
+  ${y}<leader>gp${r} preview hunk, ${y}gs${r} stage, ${y}gr${r} reset, ${y}gb${r} blame popup
+
+${d}Run 'coolstuff' anytime to see this again.${r}
+EOF
+}

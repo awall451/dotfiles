@@ -145,6 +145,7 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 - **PICO-8.vim** — `.p8` syntax.
 - **vim-helm** — Helm template highlighting (with the `helm_ls` / `yamlls` detach autocmd to avoid duplicate diagnostics).
 - **snacks.nvim** — QoL picker, dashboard, scroll, indent guides, notifier (used by claudecode).
+- **gitsigns** (LunarVim built-in) — sign-column hunk markers + inline blame at end of current line (`virt_text_pos = "eol"`, 300ms delay). Hunk navigation/stage/reset keys live under `<leader>g` (LunarVim defaults).
 
 ### Other config bits
 
@@ -161,10 +162,12 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 `shell/bashrc` does:
 
 - Sane history (10k entries, dedup).
-- Aliases: `ll`, `la`, `ls=lsd` if installed, `cat=bat --paging=never` if installed.
+- Aliases: `ll`, `la`, `ls=lsd` if installed, `cat=bat --paging=never` if installed, `imcat=wezterm imgcat` if wezterm CLI in `$PATH`.
 - `$PATH` includes `~/go/bin`, `~/.local/bin`, `/opt/nvim-linux64/bin`.
 - Sources `~/.config/fzf/fzf.bash` (rg-backed file search, bat preview).
 - Inits `starship` if installed.
+- Inits `zoxide` if installed (`z foo` to jump by frecency, `zi` for fuzzy picker).
+- Defines `coolstuff` function — prints a colored cheat sheet for the modern CLI tools listed below (delta, glow, btop, procs, onefetch, yazi, zoxide, imcat, gitsigns). Run `coolstuff` anytime as a memory jog.
 - Sources `~/.bashrc.local` last.
 - **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset) and prepends `shell/wsl-bin/` to `$PATH`. That directory holds shim wrappers for `xclip` and `wl-paste` that bridge **Windows clipboard image data** (e.g. `Win+Shift+S` screenshots) into WSL2 by shelling out to PowerShell against the Win32 clipboard. WSLg only round-trips text — image bytes never appear on the X11/Wayland selection — so the wrappers fill that gap. Required for Claude Code image paste and any other tool that reads clipboard images via xclip/wl-paste. Text reads/writes are passed through to the real `/usr/bin/xclip` and `/usr/bin/wl-paste`. Requires `xclip` to be installed: `sudo apt install xclip`.
 
@@ -268,13 +271,32 @@ Aliases:
 
 - `pull.rebase=true`, `push.autoSetupRemote=true`, `fetch.prune=true`.
 - `merge.conflictStyle=zdiff3`, `rerere.enabled=true`.
-- Diff: `algorithm=histogram`, `colorMoved=default`.
+- Diff: `algorithm=histogram`, `colorMoved=default`. Pager: `delta` (side-by-side, line numbers, navigate, hyperlinks, TwoDark syntax).
 - Editor: `lvim`. Credential helper: `gh auth git-credential`.
 - Aliases: `co`, `br`, `st`, `ci`, `d`, `dc`, `lg`, `last`, `unstage`, `amend`.
 - Default `[user]` is the personal identity. Azure DevOps remotes (`**dev.azure.com**`, `**visualstudio.com**`) auto-load `~/.gitconfig-work` for the work identity via `[includeIf "hasconfig:remote.*.url:..."]`. Drop a `[user]` block into `~/.gitconfig-work` on the work machine; leave it absent everywhere else.
 - `~/.gitconfig.local` is `[include]`-d at the end for non-identity per-machine bits (signing keys, credential helpers).
 
 `git/gitignore_global` is symlinked to `~/.config/git/ignore` and applies to every repo.
+
+---
+
+## Unconfigured CLI tools (install-only)
+
+These are installed system-wide (pacman / your package manager) and used with defaults — no tracked config file in this repo. Listed here so they don't get forgotten.
+
+| Tool | What it does | Quick start |
+|------|--------------|-------------|
+| `delta` | Syntax-highlighted, side-by-side git diff pager. Wired in `git/gitconfig` (`core.pager`, `interactive.diffFilter`, `[delta]` block). | Run any `git diff` / `git log -p` / `git show`. |
+| `glow` | Terminal Markdown renderer. | `glow README.md`, or `glow .` for a TUI file picker. |
+| `btop` | System monitor (CPU, mem, disks, net, processes). | `btop`. `q` to quit, `?` for help, `Esc` for menu. |
+| `procs` | Modern `ps` — colored, tree mode, search. | `procs`, `procs --tree`, `procs <pattern>`. |
+| `onefetch` | Repo summary card (langs, commits, contributors, LOC). Eye candy on `cd` into a repo. | `onefetch` inside any git repo. |
+| `yazi` | TUI file manager with image previews via the kitty graphics protocol (works in WezTerm out of the box). | `yazi`. `q` quit, `?` help, `Enter` open, `Space` select. |
+| `zoxide` | Smart `cd` that learns frecent dirs. Init lives in `shell/bashrc`. | `z <partial>` to jump, `zi` for fuzzy picker. `z -` goes back. |
+| `imcat` (alias) | Shortcut for `wezterm imgcat`. Renders an image inline in the WezTerm pane. Defined in `shell/bashrc`. | `imcat path/to/img.png`. |
+
+If any of these grow a config file, move them up into the "CLI tools" section above and add an `install.sh` mapping.
 
 ---
 
