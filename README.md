@@ -5,7 +5,12 @@ Personal dotfiles. One source of truth per tool. `install.sh` symlinks every tra
 ```bash
 ./install.sh            # install / re-sync
 ./install.sh --dry-run  # preview, no changes
+./install.sh --no-tools # skip apt auto-install of coolstuff tools
 ```
+
+On Debian/Ubuntu hosts `install.sh` also tries to `apt-get install` the modern CLI tools used by the `coolstuff` cheat sheet (`wezterm`, `zoxide`, `git-delta`, `btop`). `wezterm` is pulled from the upstream Fury apt repo — the script adds the key and source list on first run. Tools that aren't reliably in apt (`glow`, `procs`, `onefetch`, `yazi`) are listed with manual install URLs. The check is fast-path: it only touches apt when something is actually missing.
+
+On WSL2 `install.sh` also syncs `wezterm/wezterm.lua` over to the Windows-side profile at `/mnt/c/Users/<winuser>/.config/wezterm/wezterm.lua` so the Windows wezterm GUI sees repo edits. Existing Windows file is diffed + backed up to `*.backup-<timestamp>` before replacement. No-op when not WSL2.
 
 Most files are symlinked into `$HOME` so edits in this repo take effect immediately. **`shell/bashrc` is the exception**: install.sh appends a `source <abs-path>/shell/bashrc` block (with markers) to your existing `~/.bashrc` instead of replacing it. Your current `~/.bashrc` is preserved untouched; the repo bashrc runs after it. The path baked into the source line is resolved at install time, so each machine gets its own absolute path.
 

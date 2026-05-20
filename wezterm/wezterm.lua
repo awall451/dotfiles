@@ -8,6 +8,15 @@ local is_windows = wezterm.target_triple:find('windows') ~= nil
 if is_windows then
   config.default_domain = 'WSL:Ubuntu-24.04'
   config.default_prog = { 'wsl.exe', '-d', 'Ubuntu-24.04', '--cd', '~' }
+  -- Forward WEZTERM_PANE into WSL via WSLENV. Without this, wsl.exe strips
+  -- it, and `tt` (which bridges to wezterm.exe) has no pane to title.
+  -- Do NOT add WEZTERM_UNIX_SOCKET/p — it would path-translate to /mnt/c/...,
+  -- and Linux-side `wezterm cli` would then blindly try connect that as a
+  -- unix socket (cross-boundary unix sockets via /mnt/c don't work).
+  local existing_wslenv = os.getenv('WSLENV') or ''
+  config.set_environment_variables = {
+    WSLENV = existing_wslenv == '' and 'WEZTERM_PANE' or (existing_wslenv .. ':WEZTERM_PANE'),
+  }
 end
 
 -- Font settings

@@ -65,7 +65,17 @@ command -v __recall_briefing_maybe >/dev/null 2>&1 && __recall_briefing_maybe
 [ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"
 
 # ----- Wezterm quick command to change tab title name
-tt() { wezterm cli set-tab-title "$1"; }
+# On WSL2, bridge through wezterm.exe — the Linux wezterm CLI can't reach
+# the Windows-side GUI socket (cross-boundary unix sockets via /mnt/c are
+# unreliable). wezterm.exe runs as a Windows process and talks to the GUI
+# directly. WEZTERM_PANE is forwarded back to it via WSLENV.
+tt() {
+  if grep -qi microsoft /proc/version 2>/dev/null && command -v wezterm.exe >/dev/null 2>&1; then
+    wezterm.exe cli set-tab-title "$1"
+  else
+    wezterm cli set-tab-title "$1"
+  fi
+}
 
 # ----- coolstuff: cheat sheet for the modern CLI tools wired up in this repo
 coolstuff() {
