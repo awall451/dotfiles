@@ -171,6 +171,89 @@ install_wezterm_apt_repo() {
   return 0
 }
 
+# Look up the browser_download_url of the first asset matching $pattern in the
+# latest release of a GitHub repo. Echoes the URL on success, exits non-zero
+# (with no output) on failure.
+github_latest_asset_url() {
+  local repo=$1 pattern=$2
+  curl -fsSL "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null \
+    | grep -oE '"browser_download_url": *"[^"]+"' \
+    | sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/' \
+    | grep -E "$pattern" \
+    | head -1
+}
+
+# Install a .deb from a GitHub release. $1=cmd label (logging), $2=repo,
+# $3=asset name regex.
+install_github_deb() {
+  local cmd=$1 repo=$2 pattern=$3 url tmp
+  url="$(github_latest_asset_url "$repo" "$pattern")"
+  if [[ -z "$url" ]]; then
+    echo "  github: no asset matching '$pattern' in latest $repo release"
+    return 1
+  fi
+  echo "  github: $cmd <- $url"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  + curl ... | sudo dpkg -i"
+    return 0
+  fi
+  tmp="$(mktemp --suffix=.deb)"
+  if ! curl -fsSL --retry 2 "$url" -o "$tmp"; then
+    echo "  curl: download failed for $cmd"
+    rm -f "$tmp"
+    return 1
+  fi
+  if ! sudo dpkg -i "$tmp"; then
+    echo "  dpkg: install failed for $cmd"
+    rm -f "$tmp"
+    return 1
+  fi
+  rm -f "$tmp"
+  return 0
+}
+
+# Install a single binary from a zip in a GitHub release into ~/.local/bin.
+# $1=cmd label, $2=repo, $3=asset regex, $4=binary name inside the zip.
+install_github_zip_bin() {
+  local cmd=$1 repo=$2 pattern=$3 binary=$4 url tmpdir
+  url="$(github_latest_asset_url "$repo" "$pattern")"
+  if [[ -z "$url" ]]; then
+    echo "  github: no asset matching '$pattern' in latest $repo release"
+    return 1
+  fi
+  echo "  github: $cmd <- $url"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  + curl ... | unzip -> ~/.local/bin/$cmd"
+    return 0
+  fi
+  tmpdir="$(mktemp -d)"
+  if ! curl -fsSL --retry 2 "$url" -o "$tmpdir/x.zip"; then
+    echo "  curl: download failed for $cmd"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+  if ! unzip -q -o "$tmpdir/x.zip" -d "$tmpdir"; then
+    echo "  unzip: extract failed for $cmd"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+  local src
+  src="$(find "$tmpdir" -type f -name "$binary" -perm -u+x 2>/dev/null | head -1)"
+  if [[ -z "$src" ]]; then
+    src="$(find "$tmpdir" -type f -name "$binary" 2>/dev/null | head -1)"
+  fi
+  if [[ -z "$src" ]]; then
+    echo "  zip: binary '$binary' not found inside archive"
+    rm -rf "$tmpdir"
+    return 1
+  fi
+  mkdir -p "$HOME/.local/bin"
+  cp "$src" "$HOME/.local/bin/$cmd"
+  chmod +x "$HOME/.local/bin/$cmd"
+  rm -rf "$tmpdir"
+  return 0
+}
+
 # Try to apt-install the modern CLI tools used by `coolstuff`. Debian-gated,
 # idempotent (fast-paths out if everything is already installed).
 install_tools() {
@@ -190,13 +273,19 @@ install_tools() {
     [yazi]=""
   )
 
-  # cmd-name -> snap install args (the binary name plus any flags like --classic).
-  # Snap fallback runs for anything still in the manual list after the apt pass.
-  local -A snap_for=(
-    [glow]="glow"
-    [onefetch]="onefetch"
-    [procs]="procs"
-    [yazi]="yazi --classic"
+  # cmd-name -> "github_repo|asset-name-regex" for tools that ship .deb files.
+  # Used as a fallback when apt has no package. .deb gives a real native
+  # install (snap was tried initially but its strict confinement broke these
+  # tools outside $HOME — they couldn't read /opt, /var, etc.).
+  local -A gh_deb=(
+    [glow]="charmbracelet/glow|glow_.*_amd64\\.deb$"
+    [onefetch]="o2sh/onefetch|onefetch_amd64\\.deb$"
+    [yazi]="sxyazi/yazi|yazi-x86_64-unknown-linux-gnu\\.deb$"
+  )
+  # cmd-name -> "github_repo|asset-regex|binary-name-inside-zip" for tools
+  # whose upstream only ships zips (no .deb). Binary lands in ~/.local/bin.
+  local -A gh_zip=(
+    [procs]="dalance/procs|procs-v.*-x86_64-linux\\.zip$|procs"
   )
 
   local missing=()
@@ -272,20 +361,30 @@ install_tools() {
     fi
   fi
 
-  # Snap fallback for tools not in apt (glow, onefetch, procs, yazi).
-  if [[ ${#manual[@]} -gt 0 ]] && command -v snap >/dev/null 2>&1; then
+  # GitHub-release fallback for tools not in apt (glow, onefetch, yazi via
+  # .deb; procs via zip extract). Native installs sidestep snap strict
+  # confinement, which blocked these tools from reading /opt, /var, etc.
+  if [[ ${#manual[@]} -gt 0 ]]; then
     local still_manual=()
     for cmd in "${manual[@]}"; do
-      local args="${snap_for[$cmd]:-}"
-      if [[ -z "$args" ]]; then
-        still_manual+=("$cmd")
-        continue
-      fi
-      echo "tools: snap-installing $args (sudo)"
-      # Word-splitting on $args is intentional — it may carry flags like --classic.
-      # shellcheck disable=SC2086
-      if ! run sudo snap install $args; then
-        echo "  snap install failed for $cmd — leaving in manual list"
+      if [[ -n "${gh_deb[$cmd]:-}" ]]; then
+        local repo="${gh_deb[$cmd]%%|*}"
+        local pattern="${gh_deb[$cmd]#*|}"
+        echo "tools: installing $cmd via GitHub release .deb (sudo)"
+        if ! install_github_deb "$cmd" "$repo" "$pattern"; then
+          still_manual+=("$cmd")
+        fi
+      elif [[ -n "${gh_zip[$cmd]:-}" ]]; then
+        local spec="${gh_zip[$cmd]}"
+        local repo="${spec%%|*}"
+        spec="${spec#*|}"
+        local pattern="${spec%%|*}"
+        local binary="${spec#*|}"
+        echo "tools: installing $cmd via GitHub release zip -> ~/.local/bin"
+        if ! install_github_zip_bin "$cmd" "$repo" "$pattern" "$binary"; then
+          still_manual+=("$cmd")
+        fi
+      else
         still_manual+=("$cmd")
       fi
     done
