@@ -178,7 +178,7 @@ install_tools() {
     return
   fi
 
-  # cmd-name -> apt package name (empty = not in default apt, manual install)
+  # cmd-name -> apt package name (empty = not in default apt, try snap below)
   local -A apt_for=(
     [wezterm]=wezterm
     [zoxide]=zoxide
@@ -188,6 +188,15 @@ install_tools() {
     [glow]=""
     [onefetch]=""
     [yazi]=""
+  )
+
+  # cmd-name -> snap install args (the binary name plus any flags like --classic).
+  # Snap fallback runs for anything still in the manual list after the apt pass.
+  local -A snap_for=(
+    [glow]="glow"
+    [onefetch]="onefetch"
+    [procs]="procs"
+    [yazi]="yazi --classic"
   )
 
   local missing=()
@@ -263,15 +272,35 @@ install_tools() {
     fi
   fi
 
+  # Snap fallback for tools not in apt (glow, onefetch, procs, yazi).
+  if [[ ${#manual[@]} -gt 0 ]] && command -v snap >/dev/null 2>&1; then
+    local still_manual=()
+    for cmd in "${manual[@]}"; do
+      local args="${snap_for[$cmd]:-}"
+      if [[ -z "$args" ]]; then
+        still_manual+=("$cmd")
+        continue
+      fi
+      echo "tools: snap-installing $args (sudo)"
+      # Word-splitting on $args is intentional — it may carry flags like --classic.
+      # shellcheck disable=SC2086
+      if ! run sudo snap install $args; then
+        echo "  snap install failed for $cmd — leaving in manual list"
+        still_manual+=("$cmd")
+      fi
+    done
+    manual=("${still_manual[@]}")
+  fi
+
   if [[ ${#manual[@]} -gt 0 ]]; then
-    echo "tools: not in apt — install manually:"
+    echo "tools: install manually:"
     for cmd in "${manual[@]}"; do
       case "$cmd" in
         wezterm)  echo "  wezterm:  apt.fury.io was unreachable — retry ./install.sh later, or grab .deb from https://github.com/wez/wezterm/releases" ;;
         glow)     echo "  glow:     https://github.com/charmbracelet/glow/releases  (or: sudo snap install glow)" ;;
-        procs)    echo "  procs:    https://github.com/dalance/procs/releases  (or: cargo install procs)" ;;
-        onefetch) echo "  onefetch: https://github.com/o2sh/onefetch/releases  (or: cargo install onefetch)" ;;
-        yazi)     echo "  yazi:     https://github.com/sxyazi/yazi/releases  (or: cargo install --locked yazi-fm yazi-cli)" ;;
+        procs)    echo "  procs:    https://github.com/dalance/procs/releases  (or: sudo snap install procs)" ;;
+        onefetch) echo "  onefetch: https://github.com/o2sh/onefetch/releases  (or: sudo snap install onefetch)" ;;
+        yazi)     echo "  yazi:     https://github.com/sxyazi/yazi/releases  (or: sudo snap install yazi --classic)" ;;
         *)        echo "  $cmd: see upstream project" ;;
       esac
     done
