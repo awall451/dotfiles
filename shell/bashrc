@@ -59,3 +59,6 @@ command -v __recall_briefing_maybe >/dev/null 2>&1 && __recall_briefing_maybe
 # Keep this file in lab/dotfiles. Put machine-specific or work-specific
 # additions in ~/.bashrc.local — that file is NOT tracked by the repo.
 [ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"
+
+# ----- Wezterm quick command to change tab title name
+tt() { wezterm cli set-tab-title "$1"; }
