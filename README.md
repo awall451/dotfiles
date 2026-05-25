@@ -21,6 +21,8 @@ On WSL2 `install.sh` also syncs `wezterm/wezterm.lua` over to the Windows-side p
 
 Most files are symlinked into `$HOME` so edits in this repo take effect immediately. **`shell/bashrc` is the exception**: install.sh appends a `source <abs-path>/shell/bashrc` block (with markers) to your existing `~/.bashrc` instead of replacing it. Your current `~/.bashrc` is preserved untouched; the repo bashrc runs after it. The path baked into the source line is resolved at install time, so each machine gets its own absolute path.
 
+**`~/.claude/settings.json` is also special**: deep-merged via `jq` (not symlinked), because Claude Code has no native include mechanism and the file mixes portable settings with per-machine state (local hooks, local-only plugin marketplaces). Tracked keys in `claude/settings.json` win; everything else is preserved. See `claude/README.md`.
+
 Per-machine drift goes in untracked override files:
 
 | File | Purpose |
@@ -29,6 +31,7 @@ Per-machine drift goes in untracked override files:
 | `~/.gitconfig.local` | per-machine signing keys, credential helpers (non-identity) |
 | `~/.gitconfig-work` | work `[user]` block — auto-loaded only for Azure DevOps remotes |
 | `~/.config/wezterm/local.lua` | per-machine wezterm tweaks (e.g. smaller font) |
+| `~/.claude/settings.json` (non-tracked keys) | per-machine hooks, local-only plugins/marketplaces — preserved by the JSON deep-merge |
 
 ---
 
@@ -290,6 +293,23 @@ Aliases:
 - `~/.gitconfig.local` is `[include]`-d at the end for non-identity per-machine bits (signing keys, credential helpers).
 
 `git/gitignore_global` is symlinked to `~/.config/git/ignore` and applies to every repo.
+
+---
+
+## Claude Code (`claude/`)
+
+Portable user-level config for the `claude` CLI plus the `ccstatusline` status bar tool.
+
+| File | Deploys to | How |
+|------|-----------|-----|
+| `claude/settings.json` | `~/.claude/settings.json` | `jq` deep-merge (preserves local hooks, marketplaces, plugins) |
+| `claude/ccstatusline/settings.json` | `~/.config/ccstatusline/settings.json` | symlink (TUI edits flow back into the repo) |
+
+Tracked: status line command (`ccstatusline`), `skipAutoPermissionPrompt`, caveman plugin marketplace + enablement. Not tracked: per-machine Stop hooks, local-directory plugin marketplaces (like the `themes` marketplace at `~/lab/projectorion/themes`), locally-enabled plugins like `rock@themes`.
+
+First-time setup on a new machine: `npm install -g ccstatusline`, then `./install.sh`, then open a new shell, then launch `claude`. Caveman marketplace + plugin auto-resolve on first run. Full notes (including the caveman statusline path-hash quirk) in `claude/README.md`.
+
+Requires `jq` for the merge step; install step skips with a notice if missing.
 
 ---
 

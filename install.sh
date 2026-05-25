@@ -8,6 +8,8 @@
 #   ~/.bashrc.local         (work aliases, project sources)
 #   ~/.gitconfig.local      (work email/signing keys)
 #   ~/.config/wezterm/local.lua  (per-machine wezterm tweaks)
+#   ~/.claude/settings.json keys not present in claude/settings.json
+#                          (preserved by the json deep-merge)
 # These files are NOT tracked by this repo.
 
 set -euo pipefail
@@ -80,6 +82,62 @@ link() {
   echo "link:  $dst -> $src"
 }
 
+# Deep-merge a tracked JSON file into an existing JSON file at $dst.
+# Tracked keys win; any keys present only in $dst are preserved
+# (e.g. per-machine hooks, local-only marketplaces). Backs up the
+# original to <dst>.backup-<timestamp> on first non-trivial change.
+# Idempotent: if the merged result equals the current $dst, no-op.
+merge_json() {
+  local src="$REPO_DIR/$1"
+  local dst="$HOME/$2"
+  local dst_dir
+  dst_dir="$(dirname "$dst")"
+
+  if [[ ! -e "$src" ]]; then
+    echo "skip:  $1 (source missing)"
+    return
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "skip:  $1 (jq not installed — install jq to merge JSON configs)"
+    return
+  fi
+
+  run mkdir -p "$dst_dir"
+
+  if [[ ! -e "$dst" ]]; then
+    if [[ $DRY_RUN -eq 1 ]]; then
+      echo "  + cp $src $dst"
+    else
+      cp "$src" "$dst"
+    fi
+    echo "merge: $dst (created from $src)"
+    return
+  fi
+
+  # Compute deep-merged result. jq's `*` operator deep-merges objects;
+  # arrays from src replace arrays in dst (acceptable here — settings
+  # arrays like statusLine are scalar-ish, not appended lists).
+  local merged
+  if ! merged="$(jq -s '.[0] * .[1]' "$dst" "$src" 2>/dev/null)"; then
+    echo "skip:  $dst (jq merge failed — destination not valid JSON?)"
+    return
+  fi
+
+  if diff -q <(jq -S . "$dst") <(printf '%s' "$merged" | jq -S .) >/dev/null 2>&1; then
+    echo "ok:    $dst already contains tracked keys from $1"
+    return
+  fi
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  + backup $dst -> $dst.backup-$TIMESTAMP and write merged result"
+  else
+    cp "$dst" "$dst.backup-$TIMESTAMP"
+    printf '%s\n' "$merged" > "$dst"
+  fi
+  echo "merge: $dst <- $src (backup: $dst.backup-$TIMESTAMP)"
+}
+
 # Append a `source <absolute-path>` block into an existing rc file if not
 # already present. Unlike link(), this does NOT replace the user's file —
 # their existing content is preserved and the block runs at the end.
@@ -134,6 +192,12 @@ link cli/fzf.bash                 .config/fzf/fzf.bash
 
 link lazygit/config.yml           .config/lazygit/config.yml
 link gh/config.yml                .config/gh/config.yml
+
+# Claude Code: settings.json is deep-merged (preserves local hooks,
+# marketplaces, etc). ccstatusline settings are symlinked so the
+# ccstatusline TUI writes edits back into the repo.
+merge_json claude/settings.json   .claude/settings.json
+link claude/ccstatusline/settings.json  .config/ccstatusline/settings.json
 
 # Add the wezterm Fury apt repo and key. Idempotent. Returns non-zero if
 # the key fetch fails (e.g. fury.io 5xx) so the caller can drop wezterm

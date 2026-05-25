@@ -34,6 +34,9 @@ config.cell_width = 1.1
 -- squares render in their place but the warning itself is just noise.
 config.warn_about_missing_glyphs = false
 
+-- Silence the terminal bell (e.g. ambiguous Tab completion rings it)
+config.audible_bell = "Disabled"
+
 -- Colors — inlined to avoid intermittent named-scheme lookup failures
 config.colors = {
   foreground    = "#c0caf5",

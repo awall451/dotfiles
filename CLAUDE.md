@@ -17,6 +17,8 @@ Personal dotfiles, organized by tool. Each top-level directory holds the source-
 - `cli/fzf.bash` — sourced from bashrc; symlinked to `~/.config/fzf/fzf.bash`
 - `lazygit/config.yml` — deployed to `~/.config/lazygit/config.yml`
 - `gh/config.yml` — deployed to `~/.config/gh/config.yml`
+- `claude/settings.json` — **deep-merged** into `~/.claude/settings.json` via `jq` (NOT symlinked — see "Claude Code config" below)
+- `claude/ccstatusline/settings.json` — symlinked to `~/.config/ccstatusline/settings.json`
 
 User-facing documentation lives in `README.md` (install flow, hotkey tables for wezterm + lvim, write-up of every CLI tool). Keep it in sync when adding tools, plugins, or keymaps.
 
@@ -52,6 +54,21 @@ Other tool-specific cross-platform notes:
 - **gitconfig hardcodes `/home/dillon/.local/bin/gh`** in the credential helper. Cross-machine port → flip to plain `gh auth git-credential` (relies on `$PATH`) or update the path.
 - **Windows-side WezTerm config is auto-synced on WSL2.** `install.sh`'s `windows_wezterm_sync()` copies `wezterm/wezterm.lua` to `/mnt/c/Users/<winuser>/.config/wezterm/wezterm.lua` on every run, but only when `/proc/version` matches `microsoft`. Windows username is resolved via `cmd.exe /c echo %USERNAME%` (invoked from `/mnt/c` to suppress the UNC-paths warning), with a fallback that scans `/mnt/c/Users/*` for a profile dir containing `AppData`. Copy (not symlink) — symlinks across `/mnt/c` aren't reliably followed by Windows wezterm. Existing file is diff'd + backed up to `.backup-<timestamp>` before replacement; matching files are a no-op. Non-WSL hosts no-op cleanly.
 - **CapsLock toggle ON breaks `Ctrl+hjkl` pane nav in WezTerm/LunarVim.** TODO: brainstorm. Confirmed 2026-05-02: CapsLock off → works; CapsLock toggle on → breaks (no holding required, just the toggle state). Almost certainly because the terminal sends `CTRL|H/J/K/L` (uppercase) when caps is on, and the `smart_split_action` keytable in `wezterm/wezterm.lua` plus the `smart-splits` keymap in `lunarvim/config.lua` only register the lowercase `h/j/k/l` form. Fix candidates: (a) add uppercase `H/J/K/L` entries alongside the lowercase ones in both `wezterm/wezterm.lua` keytable and `lunarvim/config.lua` smart-splits setup, (b) verify with `wezterm show-keys` or a debug overlay what mod+key actually arrives when caps is on, (c) decide whether `Alt+hjkl` resize bindings need the same treatment. **Do not change config until brainstorm happens.**
+
+## Claude Code config (special case)
+
+Unlike most configs, `~/.claude/settings.json` is a single JSON file with no native include mechanism — so it can't be symlinked without clobbering per-machine state (auto-commit Stop hooks, local-only plugin marketplaces like `themes` pointing at `~/lab/projectorion/themes`, locally-enabled plugins like `rock@themes`).
+
+`install.sh` handles it with a `merge_json` helper that uses `jq -s '.[0] * .[1]'` to deep-merge `claude/settings.json` over the existing `~/.claude/settings.json`. Properties:
+
+- Tracked keys (`statusLine`, `skipAutoPermissionPrompt`, `extraKnownMarketplaces.caveman`, `enabledPlugins.caveman@caveman`) overwrite whatever is there.
+- Untracked keys (local hooks, local marketplaces, local plugins) are preserved across runs.
+- Backup written as `~/.claude/settings.json.backup-<timestamp>` only when the merged result differs from the current file (so re-runs that change nothing don't litter backups).
+- Requires `jq`; install step skips with a notice if missing.
+
+**`ccstatusline/settings.json` IS symlinked** (via `link`), because ccstatusline's TUI writes edits back to disk — symlinking means TUI edits land in the repo. The caveman line in that file has a version-hash path (`.../caveman/<hash>/hooks/caveman-statusline.sh`) that drifts when caveman updates and differs across machines; expect to re-pick the command via the ccstatusline TUI occasionally. Full write-up in `claude/README.md`.
+
+Anything machine-specific (work-only hooks, local plugin marketplaces) should stay out of the tracked `claude/settings.json` and just live in `~/.claude/settings.json` directly — the merge will preserve it.
 
 ## Bashrc deployment (special case)
 

@@ -22,6 +22,8 @@ command -v wezterm >/dev/null 2>&1 && alias imcat='wezterm imgcat'
 export PATH="$PATH:$HOME/go/bin"
 export PATH="$HOME/.local/bin:$PATH"
 [ -d /opt/nvim-linux64/bin ] && export PATH="/opt/nvim-linux64/bin:$PATH"
+# npm global prefix (e.g. ccstatusline); set `npm config set prefix ~/.npm-global` to populate.
+[ -d "$HOME/.npm-global/bin" ] && export PATH="$HOME/.npm-global/bin:$PATH"
 # WSL2: expose wezterm CLI so smart-splits.nvim can cross nvim→wezterm pane boundary
 [ -d "/mnt/c/Program Files/WezTerm" ] && export PATH="$PATH:/mnt/c/Program Files/WezTerm"
 # WSL2: set WSLg X11/Wayland display so xclip and wl-paste can bridge the Windows clipboard
