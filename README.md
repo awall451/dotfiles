@@ -11,11 +11,10 @@ Personal dotfiles. One source of truth per tool. `install.sh` symlinks every tra
 On Debian/Ubuntu hosts `install.sh` also tries to install the modern CLI tools used by the `coolstuff` cheat sheet:
 
 - via apt: `wezterm` (Fury apt repo, added on first run), `zoxide`, `git-delta`, `btop`
-- via GitHub release `.deb` (`sudo dpkg -i`): `glow`, `onefetch`, `yazi`
-- via GitHub release zip into `~/.local/bin`: `procs`
+- via snap (when apt has no package): `glow`, `onefetch`, `procs`, `yazi` (`--classic`)
 - anything still missing is printed with a manual install URL
 
-The check is fast-path: it only touches the network when something is actually missing. (An earlier iteration used snap for the GitHub-release tools, but snap strict confinement blocked them from reading `/opt`, `/var`, and other paths outside `$HOME` — so native `.deb` installs are used instead.)
+The check is fast-path: it only touches apt/snap when something is actually missing.
 
 On WSL2 `install.sh` also syncs `wezterm/wezterm.lua` over to the Windows-side profile at `/mnt/c/Users/<winuser>/.config/wezterm/wezterm.lua` so the Windows wezterm GUI sees repo edits. Existing Windows file is diffed + backed up to `*.backup-<timestamp>` before replacement. No-op when not WSL2.
 
