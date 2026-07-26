@@ -26,11 +26,10 @@ Requires `jq` on PATH. If missing, the merge step skips with a notice (rest of i
 
 ## First-time setup on a new machine
 
-1. Install ccstatusline globally: `npm install -g ccstatusline` (configure npm prefix first if you haven't: `npm config set prefix ~/.npm-global`).
-2. Run `./install.sh` from the repo root.
-3. Open a new shell (or `source ~/.bashrc`) so `~/.npm-global/bin` lands on PATH.
-4. Launch `claude`. The caveman marketplace + plugin registration in the merged settings auto-resolves on first run; the marketplace is fetched from GitHub and the plugin enabled.
-5. Verify with `/plugin` — `caveman@caveman` should appear as enabled.
+1. Run `./install.sh` from the repo root. It auto-installs `ccstatusline` via `npm install -g` (skipped cleanly if `npm` is missing or if `--no-tools` is passed — in that case install manually: `npm install -g ccstatusline`, configuring `npm config set prefix ~/.npm-global` first if needed).
+2. Open a new shell (or `source ~/.bashrc`) so the npm global bin dir lands on PATH.
+3. Launch `claude`. The caveman marketplace + plugin registration in the merged settings auto-resolves on first run; the marketplace is fetched from GitHub and the plugin enabled.
+4. Verify with `/plugin` — `caveman@caveman` should appear as enabled.
 
 ## Caveman statusline path quirk
 

@@ -8,6 +8,39 @@
 -- Read the docs: https://www.lunarvim.org/docs/configuration
 -- ~/.config/lvim/config.lua
 
+-- Fix nvim-treesitter (pinned May-2024 master, now archived) on Neovim 0.11+:
+-- upstream calls `query.add_predicate("has-ancestor?", fn, true)` where the
+-- positional `true` is read as `opts.all` in 0.11, so the handler receives a
+-- TSNode[] instead of a TSNode and `node:parent()` errors on every Go buffer
+-- (go highlights.scm uses `#not-has-parent? @spell import_spec`). Re-register
+-- with explicit `all = false` to restore single-node semantics. Hooked to the
+-- lazy.nvim `LazyLoad` event filtered to `nvim-treesitter`, so it runs right
+-- after that plugin's own broken `add_predicate` call (otherwise our override
+-- would be clobbered when nvim-treesitter eventually lazy-loads on BufRead).
+vim.api.nvim_create_autocmd("User", {
+  pattern = "LazyLoad",
+  callback = function(ev)
+    if ev.data ~= "nvim-treesitter" then return end
+    local query = vim.treesitter.query
+    if not (query and query.add_predicate) then return end
+    local function has_ancestor(match, _pattern, _bufnr, pred)
+      local node = match[pred[2]]
+      if type(node) == "table" then node = node[#node] end
+      if not node then return true end
+      local ancestor_types = { unpack(pred, 3) }
+      local just_direct_parent = pred[1]:find("has-parent", 1, true)
+      node = node:parent()
+      while node do
+        if vim.tbl_contains(ancestor_types, node:type()) then return true end
+        if just_direct_parent then node = nil else node = node:parent() end
+      end
+      return false
+    end
+    pcall(query.add_predicate, "has-ancestor?", has_ancestor, { force = true, all = false })
+    pcall(query.add_predicate, "has-parent?", has_ancestor, { force = true, all = false })
+  end,
+})
+
 -- Appearance
 lvim.colorscheme = "tokyonight"
 
@@ -418,6 +451,15 @@ vim.api.nvim_create_autocmd("VimEnter", {
       end
       orig_notify(msg, level, opts)
     end
+  end,
+})
+
+-- Markdown: disable wrap so render-markdown tables stay aligned.
+-- Toggle per-buffer with `:set wrap` if you want prose wrapping back.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function()
+    vim.opt_local.wrap = false
   end,
 })
 

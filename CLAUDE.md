@@ -66,6 +66,8 @@ Unlike most configs, `~/.claude/settings.json` is a single JSON file with no nat
 - Backup written as `~/.claude/settings.json.backup-<timestamp>` only when the merged result differs from the current file (so re-runs that change nothing don't litter backups).
 - Requires `jq`; install step skips with a notice if missing.
 
+**`ccstatusline` binary is auto-installed** by `install.sh` (function `install_ccstatusline`) via `npm install -g ccstatusline`. Skips cleanly if `npm` is missing or `--no-tools` is passed. Without the binary on PATH, `statusLine.command: "ccstatusline"` resolves to nothing and the status bar renders blank — a common "my config didn't apply" failure mode after a fresh install.
+
 **`ccstatusline/settings.json` IS symlinked** (via `link`), because ccstatusline's TUI writes edits back to disk — symlinking means TUI edits land in the repo. The caveman line in that file has a version-hash path (`.../caveman/<hash>/hooks/caveman-statusline.sh`) that drifts when caveman updates and differs across machines; expect to re-pick the command via the ccstatusline TUI occasionally. Full write-up in `claude/README.md`.
 
 Anything machine-specific (work-only hooks, local plugin marketplaces) should stay out of the tracked `claude/settings.json` and just live in `~/.claude/settings.json` directly — the merge will preserve it.
