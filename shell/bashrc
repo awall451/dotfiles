@@ -55,6 +55,11 @@ command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
 # ----- zoxide (smart cd: `z foo` jumps by frecency, `zi` fuzzy-picks)
 command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
 
+# ----- docker helpers (dps, dih, deit, compose shortcuts; `dockerstuff` for the list)
+__docker_helpers="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/docker.sh"
+[ -f "$__docker_helpers" ] && source "$__docker_helpers"
+unset __docker_helpers
+
 # ----- recall: reminder CLI + morning briefing
 __recall_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 [ -f "$__recall_dir/recall.sh" ] && source "$__recall_dir/recall.sh"

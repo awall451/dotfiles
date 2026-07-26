@@ -181,11 +181,40 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 - Sources `~/.config/fzf/fzf.bash` (rg-backed file search, bat preview).
 - Inits `starship` if installed.
 - Inits `zoxide` if installed (`z foo` to jump by frecency, `zi` for fuzzy picker).
+- Sources `shell/docker.sh` (docker helpers — see below).
 - Defines `coolstuff` function — prints a colored cheat sheet for the modern CLI tools listed below (delta, glow, btop, procs, onefetch, yazi, zoxide, imcat, gitsigns). Run `coolstuff` anytime as a memory jog.
 - Sources `~/.bashrc.local` last.
 - **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset) and prepends `shell/wsl-bin/` to `$PATH`. That directory holds shim wrappers for `xclip` and `wl-paste` that bridge **Windows clipboard image data** (e.g. `Win+Shift+S` screenshots) into WSL2 by shelling out to PowerShell against the Win32 clipboard. WSLg only round-trips text — image bytes never appear on the X11/Wayland selection — so the wrappers fill that gap. Required for Claude Code image paste and any other tool that reads clipboard images via xclip/wl-paste. Text reads/writes are passed through to the real `/usr/bin/xclip` and `/usr/bin/wl-paste`. Requires `xclip` to be installed: `sudo apt install xclip`.
 
 `shell/starship.toml` is a two-line tokyo-night-flavoured prompt with git status, cmd duration, language version icons. Edit symbols in the `[lang]` blocks.
+
+---
+
+## Docker helpers (`shell/docker.sh`)
+
+Sourced from `shell/bashrc`; the whole file no-ops if `docker` is not on `$PATH`. Run `dockerstuff` for the same table in the terminal.
+
+Every `[filter]` argument is an optional substring match on container names — omit it to act on all containers.
+
+| Command | Behaviour |
+|---------|-----------|
+| `dps [filter]` | Formatted `docker ps -a`: name / age / status. Includes stopped containers. |
+| `wdps [filter]` | `dps` under `watch -n 1`. |
+| `docker-stats` | Formatted `docker stats --all` (CPU, mem, net, block IO, PIDs). |
+| `docker-mem [regex]` | `docker stats` filtered by regex, plus a summed total in GiB. |
+| `dih [filter]` | One line per container: name, health status, last probe output. |
+| `wdih [filter]` | `dih` under `watch -n 10`. |
+| `dihj <partial>` | Full healthcheck JSON (`.State.Health`) of the first matching container: every probe in the log, `ExitCode`, `FailingStreak`. For flapping probes, where `dih`'s single output line isn't enough. |
+| `deit <partial> [cmd]` | `docker exec -it` into the first matching running container. Defaults to `sh`. |
+| `drit <image>` | `docker run --rm -it --entrypoint bash` — throwaway shell from an image. |
+| `dritu <image>` | Same, `--user=root --privileged`. |
+| `dil <image\|container>` | Print image labels. Argument containing `:` is treated as an image tag, otherwise resolved as a container name. |
+| `dive <image>` | Layer / Dockerfile explorer, run from `wagoodman/dive` — nothing to install. |
+| `ctop` | htop-style container metrics, run from `quay.io/vektorlab/ctop`. |
+| `dc` / `dcp` / `dcud` / `dcd` / `dcps` / `dclf` | `docker compose` / `pull` / `up -d` / `down` / `ps` / `logs -f --tail=1000`, against the compose project in the current directory. |
+| `dcpsg <pattern> <cmd>` | Run one compose command against every service matching a pattern, e.g. `dcpsg worker restart`. |
+
+Requires `jq` for `dih` / `dih2` / `dil`, `perl` for `docker-mem`, `watch` for the `w*` variants.
 
 ---
 
