@@ -14,5 +14,7 @@
   },
   "enabledPlugins": {
     "caveman@caveman": true
-  }
+  },
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true
 }
