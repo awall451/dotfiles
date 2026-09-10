@@ -61,6 +61,8 @@ id <id> · claude attach <id> / claude stop <id>
 When a session was given work (`--task`, or a prompt handed over with `SendMessage`), subscribe once so the phone gets pinged on completion:
 
 - Include `notify_when_idle: true` on the `SendMessage` that hands over the task (or send a pure subscription with no message right after a `--task` spawn).
+- Address the session by its current `ListAgents` name, never by the 8-hex id from spawn.sh. The name starts as the id but flips to an AI title seconds after the first prompt, and a stale name fails with "No agent named ... is reachable". Run `ListAgents`, pick the row whose cwd/age matches the spawn, then send. If the spawn is under ~5s old the row may be missing; wait a few seconds and list again once.
+- Run the subscribe from the hub background session, not a focused terminal session: a terminal the user is looking at suppresses `PushNotification` as redundant.
 - One `[Cross-session idle notice]` arrives when that session next goes idle or exits. On receipt, call `PushNotification` with one line: `<name> finished: <what it did or "waiting on you">`. If the notice says the subscription expired, report that instead and do not resubscribe on your own.
 
 Do not subscribe for sessions spawned idle without a task; nothing will finish.
