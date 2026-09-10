@@ -1,0 +1,15 @@
+[Unit]
+Description=Claude Code Remote Control hub (background session in ~) + restore of background sessions
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.config/claude-hub/hub.sh
+ExecStop=%h/.config/claude-hub/hub.sh snapshot
+
+[Install]
+WantedBy=default.target

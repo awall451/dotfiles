@@ -56,6 +56,15 @@ Spawned <name> in <dir>          (or: Resumed "<title>" in <dir>)
 id <id> · claude attach <id> / claude stop <id>
 ```
 
+## Notify when a task finishes
+
+When a session was given work (`--task`, or a prompt handed over with `SendMessage`), subscribe once so the phone gets pinged on completion:
+
+- Include `notify_when_idle: true` on the `SendMessage` that hands over the task (or send a pure subscription with no message right after a `--task` spawn).
+- One `[Cross-session idle notice]` arrives when that session next goes idle or exits. On receipt, call `PushNotification` with one line: `<name> finished: <what it did or "waiting on you">`. If the notice says the subscription expired, report that instead and do not resubscribe on your own.
+
+Do not subscribe for sessions spawned idle without a task; nothing will finish.
+
 ## Follow-ups
 
 - **List running**: `claude agents --json` (non-TTY). Filter `kind == "background"`.

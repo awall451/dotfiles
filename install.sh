@@ -262,6 +262,16 @@ link claude/ccstatusline/settings.json  .config/ccstatusline/settings.json
 # Global skills: each skill dir symlinked individually so locally-authored
 # skills in ~/.claude/skills/ coexist with tracked ones.
 link claude/skills/spawn          .claude/skills/spawn
+link claude/skills/sessions       .claude/skills/sessions
+link claude/skills/status         .claude/skills/status
+# Always-on Remote Control hub: user unit runs hub.sh at login, snapshots
+# running background sessions at logout and resumes them next boot.
+link claude/hub/hub.sh            .config/claude-hub/hub.sh
+link claude/hub/claude-hub.service .config/systemd/user/claude-hub.service
+if command -v systemctl >/dev/null 2>&1 && [[ -d "$HOME/.config/systemd/user" ]]; then
+  run systemctl --user daemon-reload
+  run systemctl --user enable claude-hub.service
+fi
 
 # Add the wezterm Fury apt repo and key. Idempotent. Returns non-zero if
 # the key fetch fails (e.g. fury.io 5xx) so the caller can drop wezterm
