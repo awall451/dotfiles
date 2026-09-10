@@ -1,0 +1,9 @@
+[Unit]
+Description=Ensure the Claude Code Remote Control hub session is running
+After=claude-hub.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.config/claude-hub/hub.sh ensure

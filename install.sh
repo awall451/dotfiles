@@ -268,9 +268,12 @@ link claude/skills/status         .claude/skills/status
 # running background sessions at logout and resumes them next boot.
 link claude/hub/hub.sh            .config/claude-hub/hub.sh
 link claude/hub/claude-hub.service .config/systemd/user/claude-hub.service
+link claude/hub/claude-hub-watchdog.service .config/systemd/user/claude-hub-watchdog.service
+link claude/hub/claude-hub-watchdog.timer   .config/systemd/user/claude-hub-watchdog.timer
 if command -v systemctl >/dev/null 2>&1 && [[ -d "$HOME/.config/systemd/user" ]]; then
   run systemctl --user daemon-reload
   run systemctl --user enable claude-hub.service
+  run systemctl --user enable --now claude-hub-watchdog.timer
 fi
 
 # Add the wezterm Fury apt repo and key. Idempotent. Returns non-zero if

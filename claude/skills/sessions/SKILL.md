@@ -28,7 +28,7 @@ Report as a short list, one line per session: name, status, age, cwd, and the li
 ~/.claude/skills/sessions/sessions.sh stop-idle        # every idle bg session except the hub
 ```
 
-Stopping keeps the conversation; `claude attach <id>` or `/spawn <project> --resume <id>` brings it back. Never stop the hub unless the user names it explicitly. Never run `claude rm` from this skill.
+Stopping keeps the conversation; `claude attach <id>` or `/spawn <project> --resume <id>` brings it back. The script refuses the hub id without `--force`; only pass it when the user names the hub explicitly, and warn that the watchdog timer resumes it within 5 minutes. Never run `claude rm` from this skill.
 
 ## Link
 
