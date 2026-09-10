@@ -259,6 +259,9 @@ link gh/config.yml                .config/gh/config.yml
 # ccstatusline TUI writes edits back into the repo.
 merge_json claude/settings.json   .claude/settings.json
 link claude/ccstatusline/settings.json  .config/ccstatusline/settings.json
+# Global skills: each skill dir symlinked individually so locally-authored
+# skills in ~/.claude/skills/ coexist with tracked ones.
+link claude/skills/spawn          .claude/skills/spawn
 
 # Add the wezterm Fury apt repo and key. Idempotent. Returns non-zero if
 # the key fetch fails (e.g. fury.io 5xx) so the caller can drop wezterm
