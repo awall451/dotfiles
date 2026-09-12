@@ -139,3 +139,89 @@ ${g}${b}gitsigns${r} ${d}— inline git blame in lvim (built-in)${r}
 ${d}Run 'coolstuff' anytime to see this again.${r}
 EOF
 }
+
+# ----- lvimkeys: cheat sheet for this repo's LunarVim config
+lvimkeys() {
+  local b=$'\033[1m' c=$'\033[36m' g=$'\033[32m' y=$'\033[33m' d=$'\033[2m' r=$'\033[0m'
+  cat <<EOF
+${c}${b}== LunarVim cheat sheet ==${r} ${d}(leader = <space>; config: lunarvim/config.lua)${r}
+
+${g}${b}Buffers (the tabs across the top)${r}
+  ${y}Shift+L${r} / ${y}Shift+H${r}   next / prev buffer
+  ${y}<leader>bj${r}          pick buffer by letter overlay
+  ${y}<leader>bf${r}          telescope list of open buffers
+  ${y}<leader>c${r}           close current buffer ${d}(keeps window layout)${r}
+  ${y}<leader>be${r}          pick a buffer to close
+  ${y}<leader>bh${r}/${y}bl${r}       close all to the left / right
+  ${y}<leader>bD${r}          close all others
+
+${g}${b}Windows / panes${r} ${d}— smart-splits, crosses into wezterm${r}
+  ${y}Ctrl+H/J/K/L${r}        move between nvim windows AND wezterm panes
+  ${y}Alt+H/J/K/L${r}         resize nvim window or wezterm pane
+  ${y}Ctrl+w v${r}/${y}Ctrl+w s${r}  vertical / horizontal split
+  ${d}NOTE: CapsLock toggled ON breaks Ctrl+hjkl nav (known bug)${r}
+
+${g}${b}Files / navigation${r}
+  ${y}<leader>e${r}           toggle nvim-tree explorer ${d}(right side, width 50)${r}
+  ${y}<leader>o${r} or ${y}-${r}     oil — edit the directory as a buffer, ${y}:w${r} commits
+  ${y}<leader>f${r}           find project file
+  ${y}<leader>sf${r}          telescope find files
+  ${y}<leader>st${r}          live grep across project
+  ${y}<leader>sr${r}          recent files
+  ${y}<leader>sk${r}          search all keymaps ${d}(when this sheet is not enough)${r}
+
+${g}${b}Harpoon${r} ${d}— pinned file marks${r}
+  ${y}<leader>ha${r}          add current file
+  ${y}<leader>hh${r}          toggle quick menu
+  ${y}<leader>h1${r}..${y}h4${r}      jump to marked file 1..4
+
+${g}${b}Claude Code${r} ${d}(claudecode.nvim)${r}
+  ${y}<leader>ac${r}          toggle Claude terminal
+  ${y}<leader>af${r}          focus Claude
+  ${y}<leader>ar${r}/${y}aC${r}       resume / continue session
+  ${y}<leader>am${r}          select model
+  ${y}<leader>ab${r}          add current buffer to context
+  ${y}<leader>as${r}          send selection (visual) or tree node to Claude
+  ${y}<leader>aa${r}/${y}ad${r}       accept / deny proposed diff
+
+${g}${b}Trouble${r} ${d}— diagnostics & refs panel${r}
+  ${y}<leader>xx${r} all diagnostics   ${y}<leader>xd${r} this buffer
+  ${y}<leader>xs${r} symbols           ${y}<leader>xl${r} LSP refs/defs
+  ${y}<leader>xq${r} quickfix          ${y}<leader>xL${r} location list
+
+${g}${b}LSP${r}
+  ${y}gd${r} definition  ${y}gr${r} references  ${y}gi${r} implementation  ${y}K${r} hover docs
+  ${y}<leader>la${r} code action   ${y}<leader>lr${r} rename   ${y}<leader>lf${r} format
+  ${y}<leader>lj${r}/${y}lk${r} next / prev diagnostic
+  ${y}<leader>li${r} LspInfo       ${y}<leader>lI${r} Mason
+
+${g}${b}Folding${r} ${d}(nvim-ufo, treesitter-based, all open on load)${r}
+  ${y}zR${r} open all   ${y}zM${r} close all   ${y}za${r} toggle fold   ${y}zp${r} peek fold under cursor
+
+${g}${b}Treesitter extras${r}
+  ${y}<leader>tc${r}          toggle sticky context header
+  ${y}<leader>tg${r}          jump up to the context line
+  ${y}<leader>j${r}           treesj — toggle join/split of a block
+
+${g}${b}Markdown${r}
+  ${y}<leader>mT${r}          insert/update table of contents
+  ${y}<leader>mp${r}/${y}mP${r}       browser preview start / stop
+  ${d}render-markdown draws headings/tables in-buffer; wrap is off in .md${r}
+
+${g}${b}Git${r} ${d}(gitsigns + lazygit)${r}
+  ${y}<leader>gg${r}          lazygit
+  ${y}<leader>gj${r}/${y}gk${r}       next / prev hunk
+  ${y}<leader>gp${r} preview  ${y}<leader>gs${r} stage  ${y}<leader>gr${r} reset hunk
+  ${y}<leader>gl${r} blame line   ${y}<leader>gL${r} full blame
+  ${d}inline blame auto-shows at end of line after 300ms idle${r}
+
+${g}${b}LunarVim itself${r}
+  ${y}<leader>Lr${r}          reload config ${d}(after editing lunarvim/config.lua)${r}
+  ${y}<leader>Lk${r}          view all keymaps
+  ${y}<leader>pu${r}/${y}ps${r}       Lazy update / sync plugins
+  ${y}<leader>w${r} save   ${y}<leader>q${r} quit   ${y}<leader>h${r} clear search highlight
+  ${y}<leader>/${r}           toggle comment (works in visual too)
+
+${d}Run 'lvimkeys' anytime to see this again. 'coolstuff' for CLI tools.${r}
+EOF
+}

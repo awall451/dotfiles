@@ -418,6 +418,11 @@ lvim.keys.normal_mode["<M-j>"] = "<cmd>SmartResizeDown<cr>"
 lvim.keys.normal_mode["<M-k>"] = "<cmd>SmartResizeUp<cr>"
 lvim.keys.normal_mode["<M-l>"] = "<cmd>SmartResizeRight<cr>"
 
+-- Buffer (bufferline tab) cycling. Shadows vim's default H/L (move cursor to
+-- top/bottom of visible screen); `<leader>bn`/`<leader>bb` still work too.
+lvim.keys.normal_mode["<S-l>"] = "<cmd>BufferLineCycleNext<cr>"
+lvim.keys.normal_mode["<S-h>"] = "<cmd>BufferLineCyclePrev<cr>"
+
 -- Keep Tree-sitter for folding/treesj/context, but stop illuminate from using it (prevents error spam)
 lvim.builtin.illuminate.options = {
   providers = { "lsp", "regex" },

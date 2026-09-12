@@ -67,12 +67,26 @@ Defined in `wezterm/wezterm.lua`. Wezterm defaults stay enabled; the bindings be
 
 Defined in `lunarvim/config.lua`. Leader is `<space>` (LunarVim default).
 
+Run `lvimkeys` in a shell for a printable version of everything below plus the LunarVim defaults worth remembering.
+
 ### Pane / window navigation
 
 | Key | Action |
 |-----|--------|
 | `Ctrl+H/J/K/L` | Smart-splits move (nvim window or wezterm pane) |
 | `Alt+H/J/K/L`  | Smart-splits resize |
+
+### Buffer (tab) switching
+
+| Key | Action |
+|-----|--------|
+| `Shift+L` | Next buffer (bufferline tab) |
+| `Shift+H` | Previous buffer |
+| `<leader>bj` | Pick buffer by letter overlay |
+| `<leader>bf` | Telescope buffer list |
+| `<leader>c` | Close current buffer |
+
+`Shift+H/L` shadow vim's default "cursor to top/bottom of screen" motions.
 
 ### Folding (nvim-ufo + treesitter)
 
@@ -183,6 +197,7 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 - Inits `zoxide` if installed (`z foo` to jump by frecency, `zi` for fuzzy picker).
 - Sources `shell/docker.sh` (docker helpers — see below).
 - Defines `coolstuff` function — prints a colored cheat sheet for the modern CLI tools listed below (delta, glow, btop, procs, onefetch, yazi, zoxide, imcat, gitsigns). Run `coolstuff` anytime as a memory jog.
+- Defines `lvimkeys` function — prints a colored cheat sheet for **this repo's** LunarVim config: buffer/tab switching, smart-splits pane nav, Claude Code, harpoon, trouble, folding, markdown, git. Run `lvimkeys` anytime. Keep it in sync when adding keymaps to `lunarvim/config.lua`.
 - Sources `~/.bashrc.local` last.
 - **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset) and prepends `shell/wsl-bin/` to `$PATH`. That directory holds shim wrappers for `xclip` and `wl-paste` that bridge **Windows clipboard image data** (e.g. `Win+Shift+S` screenshots) into WSL2 by shelling out to PowerShell against the Win32 clipboard. WSLg only round-trips text — image bytes never appear on the X11/Wayland selection — so the wrappers fill that gap. Required for Claude Code image paste and any other tool that reads clipboard images via xclip/wl-paste. Text reads/writes are passed through to the real `/usr/bin/xclip` and `/usr/bin/wl-paste`. Requires `xclip` to be installed: `sudo apt install xclip`.
 
