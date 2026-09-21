@@ -1,7 +1,10 @@
 [Unit]
 Description=Claude Code Remote Control hub (background session in ~) + restore of background sessions
-After=network-online.target
+After=network-online.target claude-daemon.service
 Wants=network-online.target
+
+# hub.sh must talk to the supervisor in claude-daemon.service, never start its own.
+Requires=claude-daemon.service
 
 [Service]
 Type=oneshot

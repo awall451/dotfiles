@@ -4,7 +4,7 @@ Portable subset of `~/.claude/` and `~/.config/ccstatusline/` for this dotfiles 
 
 ## What's tracked
 
-- `settings.json` — portable Claude Code user settings: status line, `skipAutoPermissionPrompt`, caveman marketplace + enabled plugin.
+- `settings.json` — portable Claude Code user settings: status line, `skipAutoPermissionPrompt`, `remoteControlAtStartup` (auto-connect Remote Control in every session; explicit so it does not depend on the server-side default), caveman marketplace + enabled plugin.
 - `ccstatusline/settings.json` — full ccstatusline layout (the multi-line bar with model / context / git / context-bar / session-usage / weekly-usage / caveman line).
 
 ## What's NOT tracked (machine-local)

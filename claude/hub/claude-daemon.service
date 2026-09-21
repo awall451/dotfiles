@@ -1,0 +1,21 @@
+[Unit]
+Description=Claude Code background-session supervisor (hosts --bg sessions outside other units' cgroups)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/claude daemon run
+# The supervisor exits on its own when idle with no sessions; bring it back
+# so hub.sh never has to cold-start a daemon inside its own oneshot cgroup
+# (systemd would kill that daemon, and the hub with it, when the unit ends).
+Restart=always
+RestartSec=5
+# Sessions are children of the supervisor; on stop let it shut them down.
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

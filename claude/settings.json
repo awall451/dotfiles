@@ -15,6 +15,7 @@
   "enabledPlugins": {
     "caveman@caveman": true
   },
+  "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
   "inputNeededNotifEnabled": true
 }

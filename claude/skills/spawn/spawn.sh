@@ -116,8 +116,13 @@ cd "$DIR"
 args=(--bg --remote-control "$NAME")
 
 if [[ -n "$RESUME" ]]; then
-  matches=( "$PROJ_DIR"/"$RESUME"*.jsonl )
-  if [[ ! -e "${matches[0]}" ]]; then
+  # Real transcripts only: <uuid>.orphaned-*.jsonl copies are not resumable
+  # (the name lands in the picker as a search term and the session hangs).
+  matches=()
+  for f in "$PROJ_DIR"/"$RESUME"*.jsonl; do
+    if [[ "$(basename "$f" .jsonl)" =~ ^[0-9a-f-]{36}$ ]]; then matches+=("$f"); fi
+  done
+  if (( ${#matches[@]} == 0 )); then
     echo "error: no session starting with '$RESUME' in $PROJ_DIR" >&2; exit 2
   elif (( ${#matches[@]} > 1 )); then
     echo "error: ambiguous session prefix '$RESUME':" >&2

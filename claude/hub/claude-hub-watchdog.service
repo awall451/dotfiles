@@ -1,6 +1,9 @@
 [Unit]
 Description=Ensure the Claude Code Remote Control hub session is running
-After=claude-hub.service
+After=claude-hub.service claude-daemon.service
+
+# hub.sh must talk to the supervisor in claude-daemon.service, never start its own.
+Requires=claude-daemon.service
 
 [Service]
 Type=oneshot

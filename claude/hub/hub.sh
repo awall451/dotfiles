@@ -61,14 +61,27 @@ resume_quiet() {
   printf '%s\n' "$out"
 }
 
-transcript_for() { ls "$HOME"/.claude/projects/*/"$1"*.jsonl 2>/dev/null | head -1; }
+# Real transcripts only (<uuid>.jsonl). The CLI can leave
+# <uuid>.orphaned-<ts>-<hash>.jsonl copies behind; passing one of those names
+# to --resume opens the picker, and the session hangs there with no URL.
+transcript_for() {
+  ls "$HOME"/.claude/projects/*/"$1"*.jsonl 2>/dev/null \
+    | grep -E '/[0-9a-f-]{36}\.jsonl$' | head -1 || true
+}
 # Full session UUID for a short id. `--resume <short id>` is treated as a
 # search term (opens the picker, forks); only the full UUID resumes in place.
 full_id() { local t; t="$(transcript_for "$1")"; [[ -n "$t" ]] && basename "$t" .jsonl; }
 
 rc_url() {
-  claude logs "$1" 2>/dev/null | strip_ansi \
-    | grep -o 'https://claude\.ai/code/session_[A-Za-z0-9]*' | tail -1 || true
+  # Live source: ~/.claude/sessions/<pid>.json carries the current
+  # bridgeSessionId (the URL changes whenever the session is resumed).
+  local f b
+  f="$(grep -l "\"jobId\":\"$1\"" "$HOME"/.claude/sessions/*.json 2>/dev/null | head -1)"
+  if [[ -n "$f" ]]; then
+    b="$(sed -n 's/.*"bridgeSessionId":"\([^"]*\)".*/\1/p' "$f")"
+    [[ -n "$b" ]] && { echo "https://claude.ai/code/$b"; return 0; }
+  fi
+  return 0
 }
 
 wait_url() {
@@ -84,6 +97,19 @@ start() {
   local restore="${1:-1}"
   cd "$HOME"
   local id; id="$(hub_id)"
+
+  # A live pid is not enough: a session stuck at the resume picker never
+  # connects. No URL in its logs means it never did, so stopping it loses
+  # nothing; fall through to resume (or create, if it has no transcript).
+  if [[ -n "$id" ]] && is_running "$id" && ! URL_TIMEOUT=20 wait_url "$id" >/dev/null; then
+    echo "hub: $id running without Remote Control; restarting it"
+    claude stop "$id" >/dev/null 2>&1 || true
+    wait_stopped "$id" || true
+    if [[ -z "$(full_id "$id")" ]]; then
+      claude rm "$id" >/dev/null 2>&1 || true
+      id=""
+    fi
+  fi
 
   if [[ -n "$id" ]] && is_running "$id"; then
     echo "hub: $id already running"
