@@ -6,9 +6,14 @@
 #   spawn.sh <project> --resume <id-prefix> [--name NAME]  resume past session
 #   spawn.sh <project> --list [--limit N]                  list past sessions
 #
-#   <project>   Absolute/relative path, or a fuzzy name resolved against
-#               $SPAWN_ROOTS (default: ~/lab:~). Exact > prefix > substring,
-#               case-insensitive. Ambiguous → lists candidates, exit 2.
+#   <project>   Absolute/relative path, an alias from the registry
+#               ($SPAWN_REGISTRY, default ~/.config/claude-hub/projects.tsv,
+#               untracked: alias<TAB>path<TAB>note), or a fuzzy dir name
+#               resolved against $SPAWN_ROOTS (default: ~/lab:~). Registry alias >
+#               exact > prefix > substring, case-insensitive. Ambiguous →
+#               lists candidates, exit 2. Output line `via=` says which
+#               (path|registry|fuzzy); fuzzy means the caller should confirm.
+#   --projects  Print the registry (alias  path  note) and exit.
 #   --name      Remote Control display name (default: project dir basename).
 #   --task      Initial prompt; session starts working immediately.
 #               Without it, session sits idle until prompted from phone.
@@ -17,13 +22,14 @@
 #   --limit     Max rows for --list (default 8).
 #   --roots     Override search roots (colon-separated).
 #
-# Spawn/resume print key=value lines: id, name, dir, session_url.
+# Spawn/resume print key=value lines: id, name, dir, via, session_url.
 # Exit 0 ok, 1 spawn/URL failure, 2 resolution failure.
 
 set -euo pipefail
 
 ROOTS="${SPAWN_ROOTS:-$HOME/lab:$HOME}"
-NAME="" TASK="" PROJECT="" RESUME="" LIST=0 LIMIT=8
+REGISTRY="${SPAWN_REGISTRY:-$HOME/.config/claude-hub/projects.tsv}"
+NAME="" TASK="" PROJECT="" RESUME="" LIST=0 LIMIT=8 VIA=""
 URL_TIMEOUT="${SPAWN_URL_TIMEOUT:-45}"
 
 while [[ $# -gt 0 ]]; do
@@ -34,7 +40,10 @@ while [[ $# -gt 0 ]]; do
     --list)   LIST=1;      shift ;;
     --limit)  LIMIT="$2";  shift 2 ;;
     --roots)  ROOTS="$2";  shift 2 ;;
-    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    --projects)
+      [[ -r "$REGISTRY" ]] || { echo "error: no registry at $REGISTRY" >&2; exit 2; }
+      grep -v '^#' "$REGISTRY" | awk -F'\t' 'NF{printf "%-16s %-42s %s\n",$1,$2,$3}'; exit 0 ;;
+    -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
     -*) echo "unknown flag: $1" >&2; exit 2 ;;
     *) PROJECT="$1"; shift ;;
   esac
@@ -43,9 +52,29 @@ done
 [[ -n "$PROJECT" ]] || { echo "error: project required" >&2; exit 2; }
 
 # --- resolve project dir --------------------------------------------------
+# Registry first: exact alias in $REGISTRY (alias<TAB>path<TAB>note, '#' comments).
+# Return 0 hit, 1 no such alias, 2 alias points at a missing dir.
+registry_lookup() {
+  local q="${1,,}" alias path _
+  [[ -r "$REGISTRY" ]] || return 1
+  while IFS=$'\t' read -r alias path _; do
+    [[ -z "$alias" || "$alias" == \#* ]] && continue
+    [[ "${alias,,}" == "$q" ]] || continue
+    path="${path/#\~/$HOME}"
+    [[ -d "$path" ]] || { echo "error: registry alias '$alias' → $path does not exist" >&2; return 2; }
+    realpath "$path"; return 0
+  done < "$REGISTRY"
+  return 1
+}
+
+# Sets DIR and VIA (path|registry|fuzzy). Runs in the main shell, not $(...).
 resolve() {
-  local q="$1"
-  if [[ -d "$q" ]]; then realpath "$q"; return 0; fi
+  local q="$1" hit rc=0
+  if [[ -d "$q" ]]; then VIA=path; DIR="$(realpath "$q")"; return 0; fi
+  hit="$(registry_lookup "$q")" || rc=$?
+  if (( rc == 0 )); then VIA=registry; DIR="$hit"; return 0; fi
+  (( rc == 2 )) && return 2
+  VIA=fuzzy
 
   local -a exact=() prefix=() sub=()
   local ql="${q,,}" root d base bl
@@ -75,10 +104,11 @@ resolve() {
     printf '  %s\n' "${hits[@]}" >&2
     return 2
   fi
-  printf '%s\n' "${hits[0]}"
+  DIR="${hits[0]}"
 }
 
-DIR="$(resolve "$PROJECT")" || exit 2
+DIR=""
+resolve "$PROJECT" || exit 2
 [[ -n "$NAME" ]] || NAME="${DIR##*/}"
 SLUG="$(printf '%s' "$DIR" | sed 's#[/.]#-#g')"
 PROJ_DIR="$HOME/.claude/projects/$SLUG"
@@ -96,10 +126,11 @@ session_title() {
 
 # --- list -----------------------------------------------------------------
 if (( LIST )); then
+  echo "dir=$DIR"
+  echo "via=$VIA"
   [[ -d "$PROJ_DIR" ]] || { echo "no sessions for $DIR" >&2; exit 0; }
   running="$(claude agents --json 2>/dev/null | grep -o '"sessionId": *"[0-9a-f-]*"' | grep -o '[0-9a-f-]\{36\}' || true)"
   n=0
-  echo "dir=$DIR"
   for f in $(ls -t "$PROJ_DIR"/*.jsonl 2>/dev/null); do
     sid="$(basename "$f" .jsonl)"
     [[ "$sid" =~ ^[0-9a-f-]{36}$ ]] || continue
@@ -150,6 +181,7 @@ done
 echo "id=$ID"
 echo "name=$NAME"
 echo "dir=$DIR"
+echo "via=$VIA"
 echo "session_url=$URL"
 if [[ -z "$URL" ]]; then
   echo "warn: Remote Control URL not seen within ${URL_TIMEOUT}s; check 'claude logs $ID'" >&2

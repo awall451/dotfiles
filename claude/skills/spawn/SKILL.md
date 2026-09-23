@@ -16,8 +16,20 @@ Helper: `~/.claude/skills/spawn/spawn.sh` (run `--help` for flags).
 ~/.claude/skills/spawn/spawn.sh <project> [--name NAME] [--task "prompt"]
 ```
 
-- `<project>`: path or fuzzy name (resolved against `~/lab`, then `~`). Exact > prefix > substring.
+- `<project>`: path, registry alias, or fuzzy dir name. Resolution order: absolute path > alias in the registry > fuzzy basename under `$SPAWN_ROOTS` (default `~/lab`, then `~`; exact > prefix > substring).
 - `--name`: Remote Control display name. Default = dir basename.
+
+### Project registry — never guess a directory
+
+`~/.config/claude-hub/projects.tsv` (`$SPAWN_REGISTRY`) is the source of truth for where projects live: `alias<TAB>path<TAB>note`, `#` comments, `~` allowed in paths. It is machine-local and deliberately not in dotfiles; the same repo may be cloned in more than one place, and the registry row is the one that gets worked on. Print it with `spawn.sh --projects`.
+
+Every spawn/resume/list prints `via=path|registry|fuzzy`:
+
+- `registry` or `path`: proceed.
+- `fuzzy`: the script only searched directory names. **Do not spawn on a fuzzy hit.** Run `--list` (which also prints `dir` and `via`) to see the candidate, confirm the full path with `AskUserQuestion`, then spawn. After confirming, add a row to the registry so the next spawn is a registry hit.
+- Exit 2 with "registry alias … does not exist": the registry is stale. Fix the row, do not fall back to guessing.
+
+Still confirm when the fuzzy candidate looks plausible: one wrong spawn costs an hour of work in the wrong clone.
 - `--task`: initial prompt. With it, the session starts working immediately. Without it, the session idles until prompted from the phone.
 
 ## Resume a past session
@@ -42,7 +54,7 @@ If output includes `note=forked copy of ...`, the original was a background sess
 
 ## Output
 
-Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `session_url`.
+Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `via`, `session_url`.
 
 Exit 2 = project not found or ambiguous (candidates on stderr). Ask the user which one, then rerun with the full path. Do not guess.
 
