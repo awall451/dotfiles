@@ -2,7 +2,7 @@
 # Ensure a Remote Control "hub" background session exists in $HOME and
 # restore background sessions that were running at last logout/shutdown.
 #
-# Usage: hub.sh [start|ensure|snapshot|stop|status]
+# Usage: hub.sh [start|ensure|snapshot|stop|status|daemon]
 #   start     (default) resume the saved hub session or create one, then
 #             resume every background session listed in restore.list
 #             (unless HUB_RESTORE=0)
@@ -11,6 +11,8 @@
 #             restore.list (wired to ExecStop, so it runs at logout/shutdown)
 #   stop      snapshot, then stop the hub session (conversation kept)
 #   status    print hub id, running state, and Remote Control URL
+#   daemon    run the background-session supervisor in the foreground and
+#             outlive its upgrade hand-over; ExecStart of claude-daemon.service
 #
 # State in ~/.config/claude-hub/: hub.id, restore.list
 # Env: HUB_DIR  directory the hub session runs in (default: $HOME); must be
@@ -193,6 +195,37 @@ status() {
   fi
 }
 
+# Pid of the running supervisor; empty when there is none.
+daemon_pid() {
+  claude daemon status 2>/dev/null | sed -n 's/^pid:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1 || true
+}
+
+# When the claude binary is updated, the supervisor starts a successor, hands
+# the sessions over to it and exits. Were the supervisor the unit's main
+# process, systemd would take that exit as the service ending and SIGKILL the
+# rest of the cgroup: the successor and every background session. So this
+# shell is the main process, and it exits only once no supervisor is left.
+daemon() {
+  local pid="" next rc stopping=0
+  # KillMode=mixed sends SIGTERM to this shell only; pass it on.
+  trap 'stopping=1; kill -TERM "$pid" 2>/dev/null || true' TERM INT
+  claude daemon run &
+  pid=$!
+  while :; do
+    # `wait` returns early on a trapped signal, and at once (127) for a
+    # successor, which is not our child; loop until the pid is really gone.
+    while kill -0 "$pid" 2>/dev/null; do
+      rc=0; wait "$pid" 2>/dev/null || rc=$?
+      (( rc != 127 )) || sleep 2
+    done
+    (( stopping )) && break
+    next="$(daemon_pid)"
+    [[ -n "$next" && "$next" != "$pid" ]] || break
+    echo "daemon: supervisor $pid handed over to $next"
+    pid="$next"
+  done
+}
+
 # start/ensure can run concurrently (login unit + watchdog timer); serialize
 # so they cannot both create a hub.
 case "${1:-start}" in
@@ -208,5 +241,6 @@ case "${1:-start}" in
   snapshot) snapshot ;;
   stop)     stop ;;
   status) status ;;
-  *) echo "usage: hub.sh [start|ensure|snapshot|stop|status]" >&2; exit 2 ;;
+  daemon)   daemon ;;
+  *) echo "usage: hub.sh [start|ensure|snapshot|stop|status|daemon]" >&2; exit 2 ;;
 esac
