@@ -13,6 +13,8 @@
 #   status    print hub id, running state, and Remote Control URL
 #
 # State in ~/.config/claude-hub/: hub.id, restore.list
+# Env: HUB_DIR  directory the hub session runs in (default: $HOME); must be
+#               a dir Claude Code already trusts, see start().
 
 set -euo pipefail
 
@@ -95,7 +97,9 @@ wait_url() {
 
 start() {
   local restore="${1:-1}"
-  cd "$HOME"
+  # Claude Code 2.1.286 refuses --bg in an untrusted dir, and $HOME can only
+  # be trusted per interactive session; HUB_DIR points the hub at a trusted dir.
+  cd "${HUB_DIR:-$HOME}"
   local id; id="$(hub_id)"
 
   # A live pid is not enough: a session stuck at the resume picker never
