@@ -134,7 +134,7 @@ fi
 [[ -n "$TASK" ]] && args+=("$TASK")
 
 out="$(claude "${args[@]}" 2>&1)" || { echo "error: claude --bg failed:" >&2; echo "$out" >&2; exit 1; }
-ID="$(printf '%s\n' "$out" | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
+ID="$(printf '%s\n' "$out" | strip_ansi | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
 [[ -n "$ID" ]] || { echo "error: could not parse session id from:" >&2; echo "$out" >&2; exit 1; }
 # Resuming an ex-background session with flags forks a copy; surface that.
 printf '%s\n' "$out" | grep -q 'started a copy' && echo "note=forked copy of $RESUME (original kept its saved options)"
