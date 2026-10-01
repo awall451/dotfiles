@@ -131,7 +131,7 @@ start() {
       if ! URL_TIMEOUT=20 wait_url "$id" >/dev/null; then
         claude stop "$id" >/dev/null 2>&1 || true
         out="$(claude --bg --resume "$(full_id "$id")" --remote-control "$HUB_NAME" --name "$HUB_NAME" 2>&1)" || { echo "hub: flagged resume failed:" >&2; echo "$out" >&2; exit 1; }
-        newid="$(printf '%s\n' "$out" | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
+        newid="$(printf '%s\n' "$out" | strip_ansi | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
         if [[ -n "$newid" && "$newid" != "$id" ]]; then
           echo "hub: resume forked to $newid; adopting it"
           id="$newid"; printf '%s\n' "$id" >"$ID_FILE"
@@ -142,7 +142,7 @@ start() {
   else
     # --name pins the peer/RC display name (persists as the session title).
     out="$(claude --bg --remote-control "$HUB_NAME" --name "$HUB_NAME" 2>&1)" || { echo "hub: spawn failed:" >&2; echo "$out" >&2; exit 1; }
-    id="$(printf '%s\n' "$out" | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
+    id="$(printf '%s\n' "$out" | strip_ansi | sed -n 's/.*backgrounded · \([0-9a-f]\{8\}\).*/\1/p' | head -1)"
     [[ -n "$id" ]] || { echo "hub: could not parse id from:" >&2; echo "$out" >&2; exit 1; }
     printf '%s\n' "$id" >"$ID_FILE"
     echo "hub: created $id"
