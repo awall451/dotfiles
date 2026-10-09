@@ -13,12 +13,43 @@ Helper: `~/.claude/skills/spawn/spawn.sh` (run `--help` for flags).
 ## New session
 
 ```
-~/.claude/skills/spawn/spawn.sh <project> [--name NAME] [--task "prompt"]
+~/.claude/skills/spawn/spawn.sh <project> [--name NAME] [--task "prompt"] --model M --effort E [--subagent-model M]
 ```
 
 - `<project>`: path or fuzzy name (resolved against `~/lab`, then `~`). Exact > prefix > substring.
 - `--name`: Remote Control display name. Default = dir basename.
 - `--task`: initial prompt. With it, the session starts working immediately. Without it, the session idles until prompted from the phone.
+- `--model` / `--effort`: the session's tier. Always pass both on a new spawn; pick them with the routing table below. Omitted, the session takes the `settings.json` default.
+- `--subagent-model`: cheaper model for the session's own subagents (`CLAUDE_CODE_SUBAGENT_MODEL`). Only for the long-build row.
+
+## Routing
+
+You are the router. Every spawn gets a model and an effort, chosen from the task you were given. No classifier, no second opinion: read the task once, pick a row, pass the flags.
+
+1. **A tier named in the request wins.** Override words map straight to flags and are not part of the task text:
+
+   | Words | Flags |
+   |---|---|
+   | "on opus", "on sonnet", "on haiku", "on fable" | `--model <that>` |
+   | "cheap", "cheaply", "low effort" | `--model sonnet --effort low` |
+   | "full effort", "high effort" | `--model fable --effort high` |
+   | "max" | `--model fable --effort max` |
+
+2. **Otherwise classify by task shape:**
+
+   | Task looks like | Model | Effort |
+   |---|---|---|
+   | Mechanical: restart a unit, reconnect a device, move or rename files, run a script whose steps are already known | `sonnet` | `low` |
+   | Ordinary dev or ops work with a known shape: apply an update, check a pipeline, add a field, write a small script | `fable` | `medium` |
+   | Debugging, root-causing, design, anything that must read logs or code to decide what to do | `fable` | `high` |
+   | Long autonomous build with many file reads | `fable` | `high`, plus `--subagent-model sonnet` |
+   | Idle session to be driven from the phone (no `--task`) | `fable` | `medium` (the user can `/model` and `/effort` inside it) |
+
+3. **Unsure means the middle row** (`fable` / `medium`). A session started too low has to be stopped and resumed on a higher tier, which costs a restart; a session started one step too high costs only tokens. Reserve `sonnet`/`low` for work whose steps are already known before the session starts. `haiku` is not in the table: it handles one command, but a second, harder prompt from the phone would be stuck on it.
+
+The tier is per session. If the user objects to the tier after the report, or the session outgrows it, `claude stop <id>` and resume with the new flags: `spawn.sh <project> --resume <id> --model M --effort E` (same transcript, new process). Without tier flags a resume keeps the session's saved model and effort.
+
+Review the routing after a couple of weeks with `~/.claude/skills/spawn/usage.sh` (`--days N`, `--dir PATH`, `--tsv`). It sums input, output and cache tokens per session from the transcripts and lists the model and effort each session ran on; a session that was restarted on another tier shows both models. If the low row keeps showing restarts, narrow it.
 
 ## Resume a past session
 
@@ -42,7 +73,7 @@ If output includes `note=forked copy of ...`, the original was a background sess
 
 ## Output
 
-Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `session_url`.
+Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `model`, `effort`, `subagent_model`, `session_url`. A tier value of `default` means the flag was not passed and `settings.json` decided; `saved` means a resume kept the session's own options.
 
 Exit 2 = project not found or ambiguous (candidates on stderr). Ask the user which one, then rerun with the full path. Do not guess.
 
@@ -53,8 +84,11 @@ Exit 1 = spawned but no URL within timeout. Report the `id` and tell the user to
 ```
 Spawned <name> in <dir>          (or: Resumed "<title>" in <dir>)
 <session_url>
+tier <model>/<effort>            (e.g. tier sonnet/low; add "· subagents sonnet" when set)
 id <id> · claude attach <id> / claude stop <id>
 ```
+
+The tier line is how the user sees the routing choice and objects in one word. Do not ask before picking a tier; report it.
 
 ## Notify when a task finishes
 

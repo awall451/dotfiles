@@ -2,9 +2,9 @@
 # Spawn or resume a background Claude Code session with Remote Control enabled.
 #
 # Usage:
-#   spawn.sh <project> [--name NAME] [--task "prompt"]     new session
-#   spawn.sh <project> --resume <id-prefix> [--name NAME]  resume past session
-#   spawn.sh <project> --list [--limit N]                  list past sessions
+#   spawn.sh <project> [--name NAME] [--task "prompt"] [tier flags]   new session
+#   spawn.sh <project> --resume <id-prefix> [--name NAME] [tier flags] resume past session
+#   spawn.sh <project> --list [--limit N]                              list past sessions
 #
 #   <project>   Absolute/relative path, or a fuzzy name resolved against
 #               $SPAWN_ROOTS (default: ~/lab:~). Exact > prefix > substring,
@@ -17,13 +17,26 @@
 #   --limit     Max rows for --list (default 8).
 #   --roots     Override search roots (colon-separated).
 #
-# Spawn/resume print key=value lines: id, name, dir, session_url.
-# Exit 0 ok, 1 spawn/URL failure, 2 resolution failure.
+# Tier flags (the hub picks these from the task; see SKILL.md "Routing"):
+#   --model M   Model alias or full name for the session (fable, opus, sonnet,
+#               haiku). Without it: settings.json default; a resume keeps the
+#               session's saved model.
+#   --effort E  Reasoning effort: low, medium, high, xhigh, max. Same defaults.
+#   --subagent-model M
+#               Cheaper model for subagents spawned inside the session
+#               (sets CLAUDE_CODE_SUBAGENT_MODEL via --settings, so it reaches
+#               sessions hosted by the daemon, where the caller's env does not).
+#
+# Spawn/resume print key=value lines: id, name, dir, model, effort,
+# subagent_model, session_url. Unset tier values print as "default" (new
+# session) or "saved" (resume).
+# Exit 0 ok, 1 spawn/URL failure, 2 resolution or bad-flag failure.
 
 set -euo pipefail
 
 ROOTS="${SPAWN_ROOTS:-$HOME/lab:$HOME}"
 NAME="" TASK="" PROJECT="" RESUME="" LIST=0 LIMIT=8
+MODEL="" EFFORT="" SUBAGENT_MODEL=""
 URL_TIMEOUT="${SPAWN_URL_TIMEOUT:-45}"
 
 while [[ $# -gt 0 ]]; do
@@ -34,13 +47,20 @@ while [[ $# -gt 0 ]]; do
     --list)   LIST=1;      shift ;;
     --limit)  LIMIT="$2";  shift 2 ;;
     --roots)  ROOTS="$2";  shift 2 ;;
-    -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
+    --model)  MODEL="$2";  shift 2 ;;
+    --effort) EFFORT="$2"; shift 2 ;;
+    --subagent-model) SUBAGENT_MODEL="$2"; shift 2 ;;
+    -h|--help) awk 'NR>1 && !/^#/ {exit} NR>1 {sub(/^# ?/, ""); print}' "$0"; exit 0 ;;
     -*) echo "unknown flag: $1" >&2; exit 2 ;;
     *) PROJECT="$1"; shift ;;
   esac
 done
 
 [[ -n "$PROJECT" ]] || { echo "error: project required" >&2; exit 2; }
+case "$EFFORT" in
+  ""|low|medium|high|xhigh|max) ;;
+  *) echo "error: --effort must be one of low, medium, high, xhigh, max (got '$EFFORT')" >&2; exit 2 ;;
+esac
 
 # --- resolve project dir --------------------------------------------------
 resolve() {
@@ -131,6 +151,11 @@ if [[ -n "$RESUME" ]]; then
   FULL="$(basename "${matches[0]}" .jsonl)"
   args+=(--resume "$FULL")
 fi
+# Tier. Omitted flags fall through to settings.json (new) or the saved
+# options (resume). --settings rides along with the saved options too.
+[[ -n "$MODEL" ]]  && args+=(--model "$MODEL")
+[[ -n "$EFFORT" ]] && args+=(--effort "$EFFORT")
+[[ -n "$SUBAGENT_MODEL" ]] && args+=(--settings "{\"env\":{\"CLAUDE_CODE_SUBAGENT_MODEL\":\"$SUBAGENT_MODEL\"}}")
 [[ -n "$TASK" ]] && args+=("$TASK")
 
 out="$(claude "${args[@]}" 2>&1)" || { echo "error: claude --bg failed:" >&2; echo "$out" >&2; exit 1; }
@@ -147,9 +172,13 @@ for ((i=0; i<URL_TIMEOUT; i++)); do
   sleep 1
 done
 
+unset_tier="default"; [[ -n "$RESUME" ]] && unset_tier="saved"
 echo "id=$ID"
 echo "name=$NAME"
 echo "dir=$DIR"
+echo "model=${MODEL:-$unset_tier}"
+echo "effort=${EFFORT:-$unset_tier}"
+echo "subagent_model=${SUBAGENT_MODEL:-$unset_tier}"
 echo "session_url=$URL"
 if [[ -z "$URL" ]]; then
   echo "warn: Remote Control URL not seen within ${URL_TIMEOUT}s; check 'claude logs $ID'" >&2
