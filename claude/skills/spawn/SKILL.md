@@ -13,12 +13,16 @@ Helper: `~/.claude/skills/spawn/spawn.sh` (run `--help` for flags).
 ## New session
 
 ```
-~/.claude/skills/spawn/spawn.sh <project> [--name NAME] [--task "prompt"]
+~/.claude/skills/spawn/spawn.sh <project> [--name NAME] [--task "prompt"] [--model M] [--effort E] [--subagent-model M]
 ```
 
 - `<project>`: path or fuzzy name (resolved against `~/lab`, then `~`). Exact > prefix > substring.
 - `--name`: Remote Control display name. Default = dir basename.
 - `--task`: initial prompt. With it, the session starts working immediately. Without it, the session idles until prompted from the phone.
+- `--model` / `--effort`: model alias (`fable`, `opus`, `sonnet`, `haiku`) and effort (`low`, `medium`, `high`, `xhigh`, `max`) for the session. Pass them when the user names a tier ("on sonnet", "cheap", "full effort") or when the task plainly does not need the default. Omitted, the session takes the `settings.json` default; a resume keeps the session's saved options.
+- `--subagent-model`: cheaper model for the session's own subagents (`CLAUDE_CODE_SUBAGENT_MODEL`), for long builds that delegate many searches.
+
+Token usage per session, with the model and effort each one ran on, is summed from the transcripts by `~/.claude/skills/spawn/usage.sh` (`--days N`, `--dir PATH`, `--tsv`).
 
 ## Resume a past session
 
@@ -42,7 +46,7 @@ If output includes `note=forked copy of ...`, the original was a background sess
 
 ## Output
 
-Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `session_url`.
+Both spawn and resume print `key=value` lines: `id`, `name`, `dir`, `model`, `effort`, `subagent_model`, `session_url`. A tier value of `default` means the flag was not passed and `settings.json` decided; `saved` means a resume kept the session's own options.
 
 Exit 2 = project not found or ambiguous (candidates on stderr). Ask the user which one, then rerun with the full path. Do not guess.
 
@@ -53,6 +57,7 @@ Exit 1 = spawned but no URL within timeout. Report the `id` and tell the user to
 ```
 Spawned <name> in <dir>          (or: Resumed "<title>" in <dir>)
 <session_url>
+tier <model>/<effort>            (only when a tier flag was passed; add "· subagents <model>" when set)
 id <id> · claude attach <id> / claude stop <id>
 ```
 
