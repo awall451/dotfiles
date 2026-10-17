@@ -17,6 +17,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=0
 SKIP_TOOLS=0
+FONTS_ONLY=0
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 # Make ~/.local/bin discoverable to the script itself so `command -v` finds
@@ -32,11 +33,15 @@ for arg in "$@"; do
     --no-tools)
       SKIP_TOOLS=1
       ;;
+    --fonts-only)
+      FONTS_ONLY=1
+      ;;
     -h|--help)
       cat <<EOF
-Usage: ./install.sh [--dry-run] [--no-tools]
-  --dry-run    Preview, no changes
-  --no-tools   Skip apt auto-install of coolstuff CLI tools
+Usage: ./install.sh [--dry-run] [--no-tools] [--fonts-only]
+  --dry-run     Preview, no changes
+  --no-tools    Skip apt auto-install of coolstuff CLI tools
+  --fonts-only  Install the Nerd Font faces and exit (nothing else)
 EOF
       exit 0
       ;;
@@ -179,6 +184,175 @@ source_into() {
   fi
   echo "source: $dst now sources $src"
 }
+
+# Resolve the Windows username from inside WSL. Echoes the name, or nothing if
+# it can't be determined. Used by both the wezterm sync and the font install.
+windows_user() {
+  local winuser=""
+  if command -v cmd.exe >/dev/null 2>&1; then
+    # cd to /mnt/c to avoid the "UNC paths not supported" cmd.exe warning.
+    winuser="$(cd /mnt/c 2>/dev/null && cmd.exe /c 'echo %USERNAME%' 2>/dev/null | tr -d '\r\n[:space:]')"
+  fi
+  if [[ -n "$winuser" && -d "/mnt/c/Users/$winuser" ]]; then
+    printf '%s' "$winuser"
+    return 0
+  fi
+  # Fallback: scan /mnt/c/Users for a real profile dir (has AppData).
+  local name
+  while IFS= read -r name; do
+    case "$name" in
+      Public|Default|"Default User"|"All Users"|desktop.ini) continue ;;
+    esac
+    if [[ -d "/mnt/c/Users/$name/AppData" ]]; then
+      printf '%s' "$name"
+      return 0
+    fi
+  done < <(ls -1 /mnt/c/Users 2>/dev/null)
+  return 0
+}
+
+# Nerd Font faces required by wezterm/wezterm.lua's font_with_fallback list.
+# Without them every powerline separator, devicon and starship glyph renders as
+# a placeholder box — the most common "my config didn't apply" report on a fresh
+# machine, and silent here because wezterm.lua sets warn_about_missing_glyphs
+# = false.
+#
+# Faces are fetched individually from the nerd-fonts repo at a pinned tag rather
+# than from the release zip: IosevkaTerm.zip is ~400MB (every weight x Mono x
+# Propo variant), while the five faces wezterm actually uses total ~72MB.
+# Format: <repo path under patched-fonts/>|<Windows font display name>
+NERD_FONTS_TAG="v3.5.1"
+NERD_FONT_FILES=(
+  "IosevkaTerm/IosevkaTermNerdFont-Regular.ttf|IosevkaTerm Nerd Font Regular"
+  "IosevkaTerm/IosevkaTermNerdFont-Medium.ttf|IosevkaTerm Nerd Font Medium"
+  "IosevkaTerm/IosevkaTermNerdFont-MediumItalic.ttf|IosevkaTerm Nerd Font Medium Italic"
+  "IosevkaTerm/IosevkaTermNerdFont-Bold.ttf|IosevkaTerm Nerd Font Bold"
+  "IosevkaTerm/IosevkaTermNerdFont-BoldItalic.ttf|IosevkaTerm Nerd Font Bold Italic"
+  "NerdFontsSymbolsOnly/SymbolsNerdFontMono-Regular.ttf|Symbols Nerd Font Mono"
+)
+
+# Register one font with Windows for the current user. Files dropped into
+# %LOCALAPPDATA%\Microsoft\Windows\Fonts stay invisible until an HKCU value
+# points at them, and — unlike machine-wide fonts in C:\Windows\Fonts, which use
+# a bare filename — the value data must be the full Windows path. No admin
+# rights needed. The value name is only a label; DirectWrite (what wezterm uses
+# on Windows) reads the real family name out of the file itself.
+register_windows_font() {
+  local winuser="$1" file="$2" display="$3"
+  local key='HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+  local name="$display (TrueType)"
+  local win_path="C:\\Users\\$winuser\\AppData\\Local\\Microsoft\\Windows\\Fonts\\$file"
+
+  if ! command -v reg.exe >/dev/null 2>&1; then
+    echo "  warn: reg.exe not on PATH — add $file via Windows Settings > Fonts"
+    return
+  fi
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "  + reg.exe add HKCU\\...\\Fonts /v \"$name\" /d \"$win_path\""
+    return
+  fi
+  if (cd /mnt/c && reg.exe query "$key" /v "$name" >/dev/null 2>&1); then
+    return
+  fi
+  if (cd /mnt/c && reg.exe add "$key" /v "$name" /t REG_SZ /d "$win_path" /f >/dev/null 2>&1); then
+    echo "fonts: registered '$name' with Windows"
+  else
+    echo "  warn: reg.exe add failed for '$name' — add via Windows Settings > Fonts"
+  fi
+}
+
+# Install the Nerd Font faces listed above. Idempotent (skips faces already on
+# disk). On WSL2 the terminal is the Windows-side wezterm GUI, so the fonts are
+# installed and registered on the Windows user profile — a copy under
+# ~/.local/share/fonts does nothing for it. On a native Linux host they go to
+# ~/.local/share/fonts and fontconfig is refreshed.
+install_nerd_fonts() {
+  if [[ $SKIP_TOOLS -eq 1 ]]; then
+    return
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "fonts: need curl on PATH — install the Nerd Font manually (see README)"
+    return
+  fi
+
+  local is_wsl=0
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    is_wsl=1
+  fi
+
+  local font_dir winuser=""
+  if (( is_wsl )); then
+    winuser="$(windows_user || true)"
+    if [[ -z "$winuser" ]]; then
+      echo "fonts: could not resolve Windows username — install the Nerd Font manually (see README)"
+      return
+    fi
+    font_dir="/mnt/c/Users/$winuser/AppData/Local/Microsoft/Windows/Fonts"
+  else
+    font_dir="$HOME/.local/share/fonts/NerdFonts"
+  fi
+
+  local entry rel file tmp installed=0
+  for entry in "${NERD_FONT_FILES[@]}"; do
+    rel="${entry%%|*}"
+    file="${rel##*/}"
+    if [[ -s "$font_dir/$file" ]]; then
+      echo "ok:    font $file"
+    elif [[ $DRY_RUN -eq 1 ]]; then
+      echo "  + download $rel -> $font_dir/$file"
+      installed=1
+    else
+      mkdir -p "$font_dir"
+      echo "fonts: downloading $file"
+      tmp="$(mktemp)"
+      if ! curl -fsSL --retry 2 --retry-delay 2 \
+          "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/${NERD_FONTS_TAG}/patched-fonts/${rel}" \
+          -o "$tmp"; then
+        echo "  warn: download failed for $file — skipping"
+        rm -f "$tmp"
+        continue
+      fi
+      if ! cp "$tmp" "$font_dir/$file"; then
+        echo "  warn: could not write $font_dir/$file"
+        rm -f "$tmp"
+        continue
+      fi
+      rm -f "$tmp"
+      installed=1
+    fi
+    if (( is_wsl )); then
+      register_windows_font "$winuser" "$file" "${entry#*|}"
+    fi
+  done
+
+  if (( is_wsl )); then
+    if (( installed )); then
+      echo "fonts: installed into $font_dir — restart wezterm to pick them up"
+    fi
+    return
+  fi
+  if (( installed )); then
+    if command -v fc-cache >/dev/null 2>&1; then
+      run fc-cache -f "$font_dir" >/dev/null
+      echo "fonts: fc-cache refreshed ($font_dir)"
+    else
+      echo "fonts: fc-cache not found — install fontconfig if glyphs don't appear"
+    fi
+  fi
+}
+
+# --fonts-only short-circuits here: the font install depends on nothing above
+# it, so a glyph-only repair skips the whole apt / neovim / lunarvim pass.
+if [[ $FONTS_ONLY -eq 1 ]]; then
+  if [[ $SKIP_TOOLS -eq 1 ]]; then
+    echo "--fonts-only with --no-tools would do nothing — drop --no-tools" >&2
+    exit 1
+  fi
+  install_nerd_fonts
+  echo
+  echo "Done (fonts only)."
+  exit 0
+fi
 
 # Bootstrap jq early so the merge_json calls below can deep-merge claude
 # settings on a fresh box (without jq the merge silently skips and tracked
@@ -787,6 +961,8 @@ install_lazygit() {
 
 install_lazygit
 
+install_nerd_fonts
+
 # On WSL2, also deploy wezterm.lua to the Windows-side user profile so the
 # Windows wezterm GUI picks up edits made in this repo. Copy (not symlink) —
 # wezterm on Windows doesn't reliably follow symlinks across /mnt/c.
@@ -795,25 +971,8 @@ windows_wezterm_sync() {
     return
   fi
 
-  local winuser=""
-  if command -v cmd.exe >/dev/null 2>&1; then
-    # cd to /mnt/c to avoid the "UNC paths not supported" cmd.exe warning.
-    winuser="$(cd /mnt/c 2>/dev/null && cmd.exe /c 'echo %USERNAME%' 2>/dev/null | tr -d '\r\n[:space:]')"
-  fi
-  if [[ -z "$winuser" || ! -d "/mnt/c/Users/$winuser" ]]; then
-    # Fallback: scan /mnt/c/Users for a real profile dir (has AppData).
-    local d name
-    while IFS= read -r name; do
-      d="/mnt/c/Users/$name"
-      case "$name" in
-        Public|Default|"Default User"|"All Users"|desktop.ini) continue ;;
-      esac
-      if [[ -d "$d/AppData" ]]; then
-        winuser="$name"
-        break
-      fi
-    done < <(ls -1 /mnt/c/Users 2>/dev/null)
-  fi
+  local winuser
+  winuser="$(windows_user || true)"
 
   if [[ -z "$winuser" ]]; then
     echo "wezterm-win: could not resolve Windows username — skipping"

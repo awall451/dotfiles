@@ -3,9 +3,10 @@
 Personal dotfiles. One source of truth per tool. `install.sh` symlinks every tracked file into `$HOME` and backs up anything it would overwrite.
 
 ```bash
-./install.sh            # install / re-sync
-./install.sh --dry-run  # preview, no changes
-./install.sh --no-tools # skip apt auto-install of coolstuff tools
+./install.sh              # install / re-sync
+./install.sh --dry-run    # preview, no changes
+./install.sh --no-tools   # skip apt auto-install of coolstuff tools
+./install.sh --fonts-only # just (re)install the Nerd Font, nothing else
 ```
 
 On Debian/Ubuntu hosts `install.sh` also tries to install the modern CLI tools used by the `coolstuff` cheat sheet:
@@ -15,6 +16,28 @@ On Debian/Ubuntu hosts `install.sh` also tries to install the modern CLI tools u
 - anything still missing is printed with a manual install URL
 
 The check is fast-path: it only touches apt/snap when something is actually missing.
+
+### Nerd Font (required)
+
+`wezterm/wezterm.lua` asks for **IosevkaTerm Nerd Font** with a **Symbols Nerd Font Mono** fallback. Without them, every powerline separator, devicon and starship glyph renders as a placeholder box — and silently, because `warn_about_missing_glyphs = false`. If your prompt looks like `?????` after an install, this is why.
+
+`install.sh` handles it (`install_nerd_fonts`) — skipped by `--no-tools`, or run on its own with `--fonts-only`:
+
+- **On WSL2** the fonts are installed and registered on the **Windows** side — `%LOCALAPPDATA%\Microsoft\Windows\Fonts` plus an `HKCU\...\CurrentVersion\Fonts` registry value per face. That's where they have to be: the terminal is the Windows wezterm GUI, so a copy in `~/.local/share/fonts` does nothing for it. No admin rights needed. **Restart wezterm** afterwards — running processes don't pick up new fonts.
+- **On native Linux** they go to `~/.local/share/fonts/NerdFonts` and `fc-cache -f` is run.
+
+Five Iosevka faces (Regular / Medium / MediumItalic / Bold / BoldItalic, ~72MB total) plus the symbols font are pulled individually from the [nerd-fonts](https://github.com/ryanoasis/nerd-fonts) repo at the tag pinned in `NERD_FONTS_TAG`. Deliberately **not** the release zip — `IosevkaTerm.zip` is ~400MB because it ships every weight × Mono × Propo variant. Re-runs skip faces already on disk.
+
+To do it by hand, or to add a face the installer doesn't ship:
+
+```bash
+# Linux
+mkdir -p ~/.local/share/fonts/NerdFonts && cd ~/.local/share/fonts/NerdFonts
+curl -fLO https://github.com/ryanoasis/nerd-fonts/raw/v3.5.1/patched-fonts/IosevkaTerm/IosevkaTermNerdFont-Medium.ttf
+fc-cache -f
+```
+
+On Windows, download the same `.ttf` and right-click → **Install** (or **Install for all users**). `FiraCode Nerd Font` is listed as a third-level fallback in `wezterm.lua` but is not installed by the script — the symbols font already covers glyph fallback. Install it yourself if you want it; wezterm ignores absent families.
 
 On WSL2 `install.sh` also syncs `wezterm/wezterm.lua` over to the Windows-side profile at `/mnt/c/Users/<winuser>/.config/wezterm/wezterm.lua` so the Windows wezterm GUI sees repo edits. Existing Windows file is diffed + backed up to `*.backup-<timestamp>` before replacement. No-op when not WSL2.
 
