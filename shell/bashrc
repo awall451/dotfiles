@@ -31,11 +31,19 @@ export PATH="$HOME/.local/bin:$PATH"
 # WSLg only bridges text — binary image data does not round-trip — so prepend
 # the repo's wsl-bin/ which holds xclip/wl-paste wrappers that fill the gap by
 # shelling out to PowerShell against the Win32 clipboard for image reads.
+# wsl-bin/ also holds xdg-open (plus wslview / x-www-browser / www-browser
+# aliases), which hands URLs to the Windows default browser — WSL2 has no
+# desktop session, so without it `gh auth login` and friends can't open one.
 if grep -qi microsoft /proc/version 2>/dev/null; then
     [[ -z "$DISPLAY" ]] && export DISPLAY=:0
     [[ -z "$WAYLAND_DISPLAY" ]] && export WAYLAND_DISPLAY=wayland-0
     __dotfiles_wsl_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/wsl-bin"
-    [[ -d "$__dotfiles_wsl_bin" ]] && export PATH="$__dotfiles_wsl_bin:$PATH"
+    if [[ -d "$__dotfiles_wsl_bin" ]]; then
+        export PATH="$__dotfiles_wsl_bin:$PATH"
+        # For callers that read $BROWSER instead of probing PATH for an opener
+        # (python -m webbrowser, sensible-browser, some TUIs).
+        [[ -z "${BROWSER:-}" ]] && export BROWSER="$__dotfiles_wsl_bin/xdg-open"
+    fi
     unset __dotfiles_wsl_bin
 fi
 # WSL2: force tokyonight_storm background via OSC 11 so WezTerm paints it before first keypress.

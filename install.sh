@@ -411,6 +411,63 @@ install_bootstrap_build_essential() {
 }
 install_bootstrap_build_essential
 
+# xclip: shell/wsl-bin/xclip is only a wrapper — it special-cases image reads
+# from the Win32 clipboard and its last line execs /usr/bin/xclip for every
+# other operation. Without the real binary any text copy dies with exit 127
+# (seen as `gh auth login`'s "Failed to copy one-time code to clipboard").
+# Only meaningful on WSL2, where bashrc puts the wrapper on PATH.
+#
+# Tests /usr/bin/xclip rather than `command -v xclip` on purpose: run
+# install.sh from an interactive shell and bashrc has already prepended
+# wsl-bin/ to PATH, so `command -v xclip` finds the *wrapper* and we would
+# conclude xclip is installed while the real binary is still missing.
+install_bootstrap_xclip() {
+  if [[ $SKIP_TOOLS -eq 1 ]]; then
+    return
+  fi
+  if ! grep -qi microsoft /proc/version 2>/dev/null; then
+    return
+  fi
+  if [[ -x /usr/bin/xclip ]]; then
+    echo "xclip: already installed"
+    return
+  fi
+  if [[ ! -r /etc/os-release ]]; then
+    echo "xclip: /etc/os-release missing — install manually (clipboard wrapper needs it)"
+    return
+  fi
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  case " ${ID:-} ${ID_LIKE:-} " in
+    *debian*|*ubuntu*) ;;
+    *)
+      echo "xclip: non-debian — install manually (clipboard wrapper needs it)"
+      return
+      ;;
+  esac
+  echo "xclip: apt-installing (sudo) — real binary behind the wsl-bin wrapper"
+  run sudo apt-get install -y xclip || echo "xclip: apt-get install failed"
+}
+install_bootstrap_xclip
+
+# The wsl-bin/ shims (xclip, wl-paste, xdg-open) are run straight out of the
+# repo — bashrc prepends the directory to PATH instead of symlinking anything
+# into $HOME — so their exec bit is load-bearing, and it is easy to lose:
+# editing this repo from Windows over \\wsl.localhost (SMB) drops the POSIX
+# mode. A non-executable shim is worse than a missing one, because PATH lookup
+# skips it and the failure reads as "xdg-open: command not found".
+ensure_wsl_shims_executable() {
+  local f
+  for f in "$REPO_DIR"/shell/wsl-bin/*; do
+    [[ -e "$f" ]] || continue
+    if [[ ! -x "$f" ]]; then
+      run chmod +x "$f"
+      echo "chmod: +x ${f#"$REPO_DIR"/}"
+    fi
+  done
+}
+ensure_wsl_shims_executable
+
 # --- mappings: <repo path>  <home-relative path>
 link lunarvim/config.lua          .config/lvim/config.lua
 link wezterm/wezterm.lua          .config/wezterm/wezterm.lua

@@ -222,9 +222,25 @@ Preview plugin needs `npm install` on first load (`cd app && npm install` runs a
 - Defines `coolstuff` function — prints a colored cheat sheet for the modern CLI tools listed below (delta, glow, btop, procs, onefetch, yazi, zoxide, imcat, gitsigns). Run `coolstuff` anytime as a memory jog.
 - Defines `lvimkeys` function — prints a colored cheat sheet for **this repo's** LunarVim config: buffer/tab switching, smart-splits pane nav, Claude Code, harpoon, trouble, folding, markdown, git. Run `lvimkeys` anytime. Keep it in sync when adding keymaps to `lunarvim/config.lua`.
 - Sources `~/.bashrc.local` last.
-- **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset) and prepends `shell/wsl-bin/` to `$PATH`. That directory holds shim wrappers for `xclip` and `wl-paste` that bridge **Windows clipboard image data** (e.g. `Win+Shift+S` screenshots) into WSL2 by shelling out to PowerShell against the Win32 clipboard. WSLg only round-trips text — image bytes never appear on the X11/Wayland selection — so the wrappers fill that gap. Required for Claude Code image paste and any other tool that reads clipboard images via xclip/wl-paste. Text reads/writes are passed through to the real `/usr/bin/xclip` and `/usr/bin/wl-paste`. Requires `xclip` to be installed: `sudo apt install xclip`.
+- **WSL2 only:** sets `DISPLAY=:0` and `WAYLAND_DISPLAY=wayland-0` (if unset), prepends `shell/wsl-bin/` to `$PATH`, and points `$BROWSER` at the `xdg-open` shim there (see [WSL2 shims](#wsl2-shims-shellwsl-bin)).
 
 `shell/starship.toml` is a two-line tokyo-night-flavoured prompt with git status, cmd duration, language version icons. Edit symbols in the `[lang]` blocks.
+
+### WSL2 shims (`shell/wsl-bin/`)
+
+Small wrappers that fill gaps WSL2 leaves between Linux CLI tools and Windows. **Not symlinked into `$HOME`** — `shell/bashrc` prepends this directory to `$PATH` on WSL2 only, so the scripts run straight out of the repo and native Linux never sees them. Adding one needs no `install.sh` mapping; it's live on the next shell.
+
+| Shim | Fills |
+|------|-------|
+| `xclip`, `wl-paste` | **Clipboard image reads.** WSLg round-trips text but not binary image data — a `Win+Shift+S` screenshot lands in the Win32 clipboard and never appears as `image/png` on the X11/Wayland selection. These detect image reads and satisfy them via PowerShell against the Win32 clipboard. Required for Claude Code image paste. Everything else passes through to the real `/usr/bin/xclip` / `/usr/bin/wl-paste`. |
+| `xdg-open` (+ `wslview`, `x-www-browser`, `www-browser` symlinks) | **Opening a browser.** WSL2 has no desktop session, so nothing provides `xdg-open`. Tools probe `$PATH` for those four names and give up — `gh auth login` fails with *"Failed opening a web browser"*. The shim hands the target to `Start-Process`, opening it in the **Windows default browser**. |
+
+`xdg-open` passes the URL across in an env var (via `WSLENV`) rather than interpolating it into the PowerShell `-Command` string, so a URL containing a quote, `$` or `;` can't be parsed as PowerShell. Local paths are translated with `wslpath -w` first. It uses `Start-Process` rather than a hardcoded `msedge.exe` path, so it follows whatever your Windows default browser is.
+
+`install.sh` automates the two prerequisites:
+
+- **`install_bootstrap_xclip`** — apt-installs the real `xclip` behind the wrapper (WSL2 + Debian only). Without it, every text copy exits 127; that's what breaks `gh auth login`'s one-time-code copy. It checks `/usr/bin/xclip` rather than `command -v xclip` on purpose — **run `install.sh` from an interactive shell and `command -v xclip` finds the wrapper**, concluding xclip is installed while the real binary is still missing.
+- **`ensure_wsl_shims_executable`** — re-applies `chmod +x` to everything in `wsl-bin/`. The exec bit is load-bearing here (PATH lookup skips non-executable files, so the failure reads as `command not found`) and editing this repo from Windows over `\\wsl.localhost` drops the POSIX mode.
 
 ---
 

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# xdg-open wrapper for WSL2 — hands URLs and files to Windows to open.
+#
+# WSL2 has no desktop session, so nothing provides xdg-open. CLI tools that
+# need a browser (gh auth login, git web--browse, python -m webbrowser) probe
+# PATH for xdg-open / x-www-browser / www-browser / wslview and give up when
+# none exist — e.g. `gh auth login` dies with "Failed opening a web browser".
+# This satisfies that probe by handing the target to Windows via Start-Process,
+# which opens it in the Windows default browser.
+#
+# Installed alongside the xclip/wl-paste bridges in wsl-bin/, which shell/bashrc
+# prepends to PATH on WSL2 only; native Linux keeps its real xdg-open.
+#
+# Reachable as wslview / x-www-browser / www-browser too (symlinks beside this
+# file) since not every caller probes for xdg-open first.
+
+set -uo pipefail
+
+target="${1:-}"
+if [[ -z "$target" ]]; then
+    echo "usage: ${0##*/} <url|file>" >&2
+    exit 1
+fi
+
+# URLs cross the boundary as-is; local paths have to become Windows paths.
+case "$target" in
+    *://*|mailto:*) ;;
+    *) target="$(wslpath -w "$target" 2>/dev/null || printf '%s' "$target")" ;;
+esac
+
+# Hand the target over in an env var rather than interpolating it into the
+# -Command string: a URL carrying a quote, $ or ; would otherwise be parsed as
+# PowerShell. WSLENV exports it across the boundary — no path-translation flag,
+# the value is already in its final form.
+export DOTFILES_OPEN_TARGET="$target"
+export WSLENV="${WSLENV:+$WSLENV:}DOTFILES_OPEN_TARGET"
+
+# Run from the Windows filesystem: powershell.exe warns (and may refuse to keep
+# its CWD) when launched from a \\wsl.localhost UNC path.
+cd /mnt/c 2>/dev/null || cd /
+exec powershell.exe -NoProfile -NonInteractive \
+    -Command 'Start-Process -FilePath $env:DOTFILES_OPEN_TARGET'
